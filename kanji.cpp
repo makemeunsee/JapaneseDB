@@ -5,6 +5,14 @@ Kanji::Kanji(const QString &string)
     literal = string;
 }
 
+Kanji::~Kanji()
+{
+    foreach(ReadingMeaningGroup *rmGroup, rmGroups)
+    {
+        delete rmGroup;
+    }
+}
+
 const QString Kanji::getLiteral()
 {
     return literal;
@@ -161,24 +169,14 @@ void Kanji::setJLPT(char j)
     jlpt = j;
 }
 
-const QSet<QString> & Kanji::getOnReadings()
+const QList<ReadingMeaningGroup *> & Kanji::getReadingMeaningGroups()
 {
-    return onReadings;
+    return rmGroups;
 }
 
-void Kanji::addOnReading(const QString &onReading)
+void Kanji::addReadingMeaningGroup(ReadingMeaningGroup *rmGroup)
 {
-    onReadings.insert(onReading);
-}
-
-const QSet<QString> & Kanji::getKunReadings()
-{
-    return kunReadings;
-}
-
-void Kanji::addKunReading(const QString &kunReading)
-{
-    kunReadings.insert(kunReading);
+    rmGroups.append(rmGroup);
 }
 
 const QSet<QString> & Kanji::getNanoriReadings()
@@ -189,24 +187,4 @@ const QSet<QString> & Kanji::getNanoriReadings()
 void Kanji::addNanoriReading(const QString &nanoriReading)
 {
     nanoriReadings.insert(nanoriReading);
-}
-
-const QSet<QString> & Kanji::getFrenchMeanings()
-{
-    return frenchMeanings;
-}
-
-void Kanji::addFrenchMeaning(const QString &frenchMeaning)
-{
-    frenchMeanings.insert(frenchMeaning);
-}
-
-const QSet<QString> & Kanji::getEnglishMeanings()
-{
-    return englishMeanings;
-}
-
-void Kanji::addEnglishMeaning(const QString &englishMeaning)
-{
-    englishMeanings.insert(englishMeaning);
 }

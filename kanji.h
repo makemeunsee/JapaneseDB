@@ -3,11 +3,15 @@
 
 #include <QString>
 #include <QSet>
+#include <QList>
+
+class ReadingMeaningGroup;
 
 class Kanji
 {
 public:
     Kanji(const QString &);
+    ~Kanji();
     const QString getLiteral();
     int getUnicode();
     const QString getJis208();
@@ -25,11 +29,8 @@ public:
     short getFrequency();
     const QSet<QString> & getNamesAsRadical();
     char getJLPT();
-    const QSet<QString> & getOnReadings();
-    const QSet<QString> & getKunReadings();
+    const QList<ReadingMeaningGroup *> & getReadingMeaningGroups();
     const QSet<QString> & getNanoriReadings();
-    const QSet<QString> & getFrenchMeanings();
-    const QSet<QString> & getEnglishMeanings();
 
     void setUnicode(int);
     void setJis208(const QString &);
@@ -46,11 +47,9 @@ public:
     void setFrequency(short);
     void addNameAsRadical(const QString &);
     void setJLPT(char);
-    void addOnReading(const QString &);
-    void addKunReading(const QString &);
+    void addReadingMeaningGroup(ReadingMeaningGroup *);
     void addNanoriReading(const QString &);
-    void addFrenchMeaning(const QString &);
-    void addEnglishMeaning(const QString &);
+
 
 private:
     QString literal;
@@ -70,13 +69,9 @@ private:
     // names in hiragana if this kanji is a radical and has a name
     QSet<QString> radicalNames;
     char jlpt;
-    QSet<QString> onReadings;
-    QSet<QString> kunReadings;
+    QList<ReadingMeaningGroup *> rmGroups;
     // readings for names only
     QSet<QString> nanoriReadings;
-    QSet<QString> englishMeanings;
-    QSet<QString> frenchMeanings;
-    // other languages to come???
 };
 
 #endif // KANJI_H

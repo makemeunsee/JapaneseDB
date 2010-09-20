@@ -1,5 +1,6 @@
 #include "kanjidb.h"
 #include "kanji.h"
+#include "readingmeaninggroup.h"
 
 KanjiDB::KanjiDB()
 {
@@ -173,28 +174,30 @@ void KanjiDB::parseCharacterElement(const QDomElement &element){
     QDomElement reamea = element.firstChildElement("reading_meaning");
     if(reamea.isNull())
         return;
-    QDomElement rmgroup = reamea.firstChildElement("rmgroup");
-    while(!rmgroup.isNull())
+    QDomElement rmgroupElement = reamea.firstChildElement("rmgroup");
+    while(!rmgroupElement.isNull())
     {
-        child = rmgroup.firstChildElement("reading");
+        ReadingMeaningGroup *rmGroup = new ReadingMeaningGroup;
+        child = rmgroupElement.firstChildElement("reading");
         while (!child.isNull())
         {
             if(QString::compare(child.attribute("r_type", ""), "ja_on") == 0)
-                k->addOnReading(child.text());
+                rmGroup->addOnReading(child.text());
             else if(QString::compare(child.attribute("r_type", ""), "ja_kun") == 0)
-                 k->addKunReading(child.text());
+                rmGroup->addKunReading(child.text());
             child = child.nextSiblingElement("reading");
         }
-        child = rmgroup.firstChildElement("meaning");
+        child = rmgroupElement.firstChildElement("meaning");
         while (!child.isNull())
         {
             if(!child.hasAttribute("m_lang") || QString::compare(child.attribute("m_lang", ""), "en") == 0)
-                k->addEnglishMeaning(child.text());
+                rmGroup->addEnglishMeaning(child.text());
             else if(QString::compare(child.attribute("m_lang", ""), "fr") == 0)
-                k->addFrenchMeaning(child.text());
+                rmGroup->addFrenchMeaning(child.text());
             child = child.nextSiblingElement("meaning");
         }
-        rmgroup = rmgroup.nextSiblingElement("rmgroup");
+        k->addReadingMeaningGroup(rmGroup);
+        rmgroupElement = rmgroupElement.nextSiblingElement("rmgroup");
     }
     // nanori readings
     child = reamea.firstChildElement("nanori");

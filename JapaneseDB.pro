@@ -7,6 +7,8 @@ TARGET = JapaneseDB
 TEMPLATE = lib
 CONFIG += staticlib
 SOURCES += kanji.cpp \
-    kanjidb.cpp
+    kanjidb.cpp \
+    readingmeaninggroup.cpp
 HEADERS += kanji.h \
-    kanjidb.h
+    kanjidb.h \
+    readingmeaninggroup.h
