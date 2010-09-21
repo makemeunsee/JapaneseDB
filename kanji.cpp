@@ -5,14 +5,6 @@ Kanji::Kanji(const QString &string)
     literal = string;
 }
 
-Kanji::~Kanji()
-{
-    foreach(ReadingMeaningGroup *rmGroup, rmGroups)
-    {
-        delete rmGroup;
-    }
-}
-
 const QString Kanji::getLiteral()
 {
     return literal;

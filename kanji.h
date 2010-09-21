@@ -11,7 +11,6 @@ class Kanji
 {
 public:
     Kanji(const QString &);
-    ~Kanji();
     const QString getLiteral();
     int getUnicode();
     const QString getJis208();
