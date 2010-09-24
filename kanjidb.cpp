@@ -208,6 +208,20 @@ void KanjiDB::parseCharacterElement(const QDomElement &element){
     }
 }
 
+void KanjiDB::search(const QString &s, QSet<Kanji *> &set)
+{
+    unsigned int size = s.size();
+    if(size < 1)
+        set.clear();
+    else if(size == 1)
+    {
+        searchByUnicode(s.at(0).unicode(), set);
+    } else
+    {
+        //todo
+    }
+}
+
 void KanjiDB::searchByUnicode(int unicode, QSet<Kanji *> &set)
 {
     if(unicode > 0 && kanjis.contains(unicode))

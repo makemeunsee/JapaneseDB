@@ -4,6 +4,7 @@
 #include <QDomDocument>
 #include <QMap>
 #include <QSet>
+#include <QString>
 
 class Kanji;
 
@@ -17,7 +18,15 @@ public:
     void searchByJIS212(const QString &, QSet<Kanji *> &);
     void searchByJIS213(const QString &, QSet<Kanji *> &);
     void search(char strokeCount, char jlpt, char grade, char radical, QSet<Kanji *> &filledList);
+    void search(const QString &, QSet<Kanji *> &);
     bool read(QIODevice *);
+
+    static inline const char *ucsKey() { return "ucs"; }
+    static inline const char *jis208Key() { return "jis208"; }
+    static inline const char *jis212Key() { return "jis212"; }
+    static inline const char *jis213Key() { return "jis213"; }
+    static inline const char *strokesKey() { return "strokes"; }
+    static inline const char *jlptKey() { return "jlpt"; }
 
 private:
     void parseCharacterElement(const QDomElement &);
