@@ -1,11 +1,24 @@
 #include "kanjidb.h"
 #include "kanji.h"
 #include "readingmeaninggroup.h"
+#include <QRegExp>
+
+const QString KanjiDB::ucsKey = QString("ucs=");
+const QString KanjiDB::gradeKey = QString("grade=");
+const QString KanjiDB::jlptKey = QString("jlpt=");
+const QString KanjiDB::strokesKey = QString("strokes=");
+const QString KanjiDB::strokesMoreKey = QString("strokes>");
+const QString KanjiDB::strokesLessKey = QString("strokes<");
+const QString KanjiDB::jis208Key = QString("jis208=");
+const QString KanjiDB::jis212Key = QString("jis212=");
+const QString KanjiDB::jis213Key = QString("jis213=");
 
 KanjiDB::KanjiDB()
 {
     //empty list returned when no match found
     kanjisByStroke[0] = new QSet<Kanji *>();
+    maxStrokes = 0;
+    minStrokes = 255;
 }
 
 bool KanjiDB::read(QIODevice *device)
@@ -165,6 +178,10 @@ void KanjiDB::parseCharacterElement(const QDomElement &element){
     {
         set = new QSet<Kanji *>();
         kanjisByStroke[strokeCount] = set;
+        if(strokeCount < minStrokes)
+            minStrokes = strokeCount;
+        else if(strokeCount > maxStrokes)
+            maxStrokes = strokeCount;
     }
     set->insert(k);
 
@@ -215,35 +232,126 @@ void KanjiDB::search(const QString &s, QSet<Kanji *> &set)
         set.clear();
     else if(size == 1)
     {
-        searchByUnicode(s.at(0).unicode(), set);
+        searchByUnicode(s.at(0).unicode(), set, true);
     } else
     {
-        //todo
+        //todo: regexp check?
+        bool unite = true;
+        bool first = true;
+        QString copy = s;
+        while(!copy.isEmpty())
+        {
+            if(copy.startsWith(ucsKey))
+            {
+                QString ucsValue = parseKey(copy, ucsKey, unite);
+                bool ok;
+                int ucs = ucsValue.toInt(&ok, 16);
+                if(ok)
+                    searchByUnicode(ucs, set, unite || first);
+            } else if(copy.startsWith(jis208Key))
+            {
+                searchByStringIndex(parseKey(copy, jis208Key, unite), kanjisJIS208, set, unite || first);
+            } else if(copy.startsWith(jis212Key))
+            {
+                searchByStringIndex(parseKey(copy, jis212Key, unite), kanjisJIS212, set, unite || first);
+            } else if(copy.startsWith(jis213Key))
+            {
+                searchByStringIndex(parseKey(copy, jis213Key, unite), kanjisJIS213, set, unite || first);
+            } else if(copy.startsWith(jlptKey))
+            {
+                bool ok;
+                int jlpt = parseKey(copy, jlptKey, unite).toInt(&ok, 10);
+                searchByIntIndex(jlpt, kanjisByJLPT, set, unite || first);
+            } else if(copy.startsWith(gradeKey))
+            {
+                bool ok;
+                int grade = parseKey(copy, gradeKey, unite).toInt(&ok, 10);
+                searchByIntIndex(grade, kanjisByGrade, set, unite || first);
+            } else if(copy.startsWith(strokesKey))
+            {
+                bool ok;
+                int strokes = parseKey(copy, strokesKey, unite).toInt(&ok, 10);
+                searchByIntIndex(strokes, kanjisByStroke, set, unite || first);
+            } else
+                // only kanji supported yet -> multiple characters & no keywords = no result
+                copy = QString();
+            first = false;
+        }
+        // keywords (ucs=, jis208=, jis212=, jis213=, jlpt=, strokes[<>=], grade=, ',', ' ')
     }
 }
 
-void KanjiDB::searchByUnicode(int unicode, QSet<Kanji *> &set)
+QString KanjiDB::parseKey(QString &parsedString, const QString &key, bool &unite)
+{
+    QString result;
+    parsedString = parsedString.mid(key.size(), -1);
+    int index = parsedString.indexOf(QRegExp("[, ]"));
+    if(index == -1)
+    {
+        result = parsedString;
+        parsedString = QString();
+    } else
+    {
+        unite = parsedString.at(index) == QChar(',');
+        result = parsedString.mid(0, index);
+        parsedString = parsedString.mid(index+1, -1);
+    }
+    return result;
+}
+
+void KanjiDB::searchByIntIndex(int index, const QMap<int, QSet<Kanji *> *> &searchedMap, QSet<Kanji *> &setToFill, bool unite)
+{
+    if(index > 0 && searchedMap.contains(index))
+    {
+        if(unite)
+            setToFill.unite(*searchedMap[index]);
+        else
+            setToFill.intersect(*searchedMap[index]);
+    }
+}
+
+void KanjiDB::searchByStringIndex(const QString &indexString, const QMap<QString, Kanji *> &searchedMap, QSet<Kanji *> &setToFill, bool unite)
+{
+    if(indexString.size() > 0 && searchedMap.contains(indexString))
+    {
+        if(unite)
+            setToFill.insert(searchedMap[indexString]);
+        else
+            if(!setToFill.contains(searchedMap[indexString]))
+                setToFill.clear();
+    }
+}
+
+void KanjiDB::searchByUnicode(int unicode, QSet<Kanji *> &set, bool unite)
 {
     if(unicode > 0 && kanjis.contains(unicode))
-        set.insert(kanjis[unicode]);
+    {
+        if(unite)
+            set.insert(kanjis[unicode]);
+        else
+            if(!set.contains(kanjis[unicode]))
+                set.clear();
+    }
 }
 
-void KanjiDB::searchByJIS208(const QString &s, QSet<Kanji *> &set)
+void KanjiDB::findVariants(const Kanji *k, QSet<Kanji *> &variants)
 {
-    if(s.size() > 0 && kanjisJIS208.contains(s))
-        set.insert(kanjisJIS208[s]);
-}
-
-void KanjiDB::searchByJIS212(const QString &s, QSet<Kanji *> &set)
-{
-    if(s.size() > 0 && kanjisJIS212.contains(s))
-        set.insert(kanjisJIS212[s]);
-}
-
-void KanjiDB::searchByJIS213(const QString &s, QSet<Kanji *> &set)
-{
-    if(s.size() > 0 && kanjisJIS213.contains(s))
-        set.insert(kanjisJIS213[s]);
+    foreach(int i, k->getUnicodeVariants())
+    {
+        searchByUnicode(i, variants, true);
+    }
+    foreach(QString s, k->getJis208Variants())
+    {
+        searchByStringIndex(s, kanjisJIS208, variants, true);
+    }
+    foreach(QString s, k->getJis212Variants())
+    {
+        searchByStringIndex(s, kanjisJIS212, variants, true);
+    }
+    foreach(QString s, k->getJis213Variants())
+    {
+        searchByStringIndex(s, kanjisJIS213, variants, true);
+    }
 }
 
 void KanjiDB::search(char strokeCount, char jlpt, char grade, char radical, QSet<Kanji *> &set)

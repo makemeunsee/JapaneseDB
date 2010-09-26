@@ -11,25 +11,25 @@ class Kanji
 {
 public:
     Kanji(const QString &);
-    const QString getLiteral();
-    int getUnicode();
-    const QString getJis208();
-    const QString getJis212();
-    const QString getJis213();
-    char getClassicalRadical();
-    char getNelsonRadical();
-    char getGrade();
-    char getStrokeCount();
-    const QSet<int> & getUnicodeVariants();
-    const QSet<QString> & getJis208Variants();
-    const QSet<QString> & getJis212Variants();
-    const QSet<QString> & getJis213Variants();
+    const QString &getLiteral() const;
+    int getUnicode() const;
+    const QString &getJis208() const;
+    const QString &getJis212() const;
+    const QString &getJis213() const;
+    char getClassicalRadical() const;
+    char getNelsonRadical() const;
+    char getGrade() const;
+    char getStrokeCount() const;
+    const QSet<int> & getUnicodeVariants() const;
+    const QSet<QString> & getJis208Variants() const;
+    const QSet<QString> & getJis212Variants() const;
+    const QSet<QString> & getJis213Variants() const;
     // if 0 -> not one of the 2500 most frequent
-    short getFrequency();
-    const QSet<QString> & getNamesAsRadical();
-    char getJLPT();
-    const QList<ReadingMeaningGroup *> & getReadingMeaningGroups();
-    const QSet<QString> & getNanoriReadings();
+    short getFrequency() const;
+    const QSet<QString> & getNamesAsRadical() const;
+    char getJLPT() const;
+    const QList<ReadingMeaningGroup *> & getReadingMeaningGroups() const;
+    const QSet<QString> & getNanoriReadings() const;
 
     void setUnicode(int);
     void setJis208(const QString &);

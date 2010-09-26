@@ -5,12 +5,12 @@ Kanji::Kanji(const QString &string)
     literal = string;
 }
 
-const QString Kanji::getLiteral()
+const QString &Kanji::getLiteral() const
 {
     return literal;
 }
 
-int Kanji::getUnicode()
+int Kanji::getUnicode() const
 {
     return unicode;
 }
@@ -20,7 +20,7 @@ void Kanji::setUnicode(int u)
     unicode = u;
 }
 
-const QString Kanji::getJis208()
+const QString &Kanji::getJis208() const
 {
     return jis208;
 }
@@ -30,7 +30,7 @@ void Kanji::setJis208(const QString &s)
     jis208 = s;
 }
 
-const QString Kanji::getJis212()
+const QString &Kanji::getJis212() const
 {
     return jis212;
 }
@@ -40,7 +40,7 @@ void Kanji::setJis212(const QString &s)
     jis212 = s;
 }
 
-const QString Kanji::getJis213()
+const QString &Kanji::getJis213() const
 {
     return jis213;
 }
@@ -50,12 +50,12 @@ void Kanji::setJis213(const QString &s)
     jis213 = s;
 }
 
-char Kanji::getClassicalRadical()
+char Kanji::getClassicalRadical() const
 {
     return classicalRadical;
 }
 
-char Kanji::getNelsonRadical()
+char Kanji::getNelsonRadical() const
 {
     return nelsonRadical;
 }
@@ -70,7 +70,7 @@ void Kanji::setNelsonRadical(char radical)
     nelsonRadical = radical;
 }
 
-char Kanji::getGrade()
+char Kanji::getGrade() const
 {
     return grade;
 }
@@ -80,7 +80,7 @@ void Kanji::setGrade(char g)
     grade = g;
 }
 
-char Kanji::getStrokeCount()
+char Kanji::getStrokeCount() const
 {
     return strokeCount;
 }
@@ -90,22 +90,22 @@ void Kanji::setStrokeCount(char count)
     strokeCount = count;
 }
 
-const QSet<int> & Kanji::getUnicodeVariants()
+const QSet<int> & Kanji::getUnicodeVariants() const
 {
     return unicodeVariants;
 }
 
-const QSet<QString> & Kanji::getJis208Variants()
+const QSet<QString> & Kanji::getJis208Variants() const
 {
     return jis208Variants;
 }
 
-const QSet<QString> & Kanji::getJis212Variants()
+const QSet<QString> & Kanji::getJis212Variants() const
 {
     return jis212Variants;
 }
 
-const QSet<QString> & Kanji::getJis213Variants()
+const QSet<QString> & Kanji::getJis213Variants() const
 {
     return jis213Variants;
 }
@@ -131,7 +131,7 @@ void Kanji::addJis213Variant(const QString &s)
 }
 
 // if 0 -> not one of the 2500 most frequent
-short Kanji::getFrequency()
+short Kanji::getFrequency() const
 {
     return frequency;
 }
@@ -141,7 +141,7 @@ void Kanji::setFrequency(short freq)
     frequency = freq;
 }
 
-const QSet<QString> & Kanji::getNamesAsRadical()
+const QSet<QString> & Kanji::getNamesAsRadical() const
 {
     return radicalNames;
 }
@@ -151,7 +151,7 @@ void Kanji::addNameAsRadical(const QString &radicalName)
     radicalNames.insert(radicalName);
 }
 
-char Kanji::getJLPT()
+char Kanji::getJLPT() const
 {
     return jlpt;
 }
@@ -161,7 +161,7 @@ void Kanji::setJLPT(char j)
     jlpt = j;
 }
 
-const QList<ReadingMeaningGroup *> & Kanji::getReadingMeaningGroups()
+const QList<ReadingMeaningGroup *> & Kanji::getReadingMeaningGroups() const
 {
     return rmGroups;
 }
@@ -171,7 +171,7 @@ void Kanji::addReadingMeaningGroup(ReadingMeaningGroup *rmGroup)
     rmGroups.append(rmGroup);
 }
 
-const QSet<QString> & Kanji::getNanoriReadings()
+const QSet<QString> & Kanji::getNanoriReadings() const
 {
     return nanoriReadings;
 }
