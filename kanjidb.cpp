@@ -236,8 +236,17 @@ void KanjiDB::search(const QString &s, QSet<Kanji *> &set)
     } else
     {
         //todo: regexp check?
-        bool unite = true;
-        bool first = true;
+        // here the request is parsed
+        // we try to match keyword and process the request one keyword group at a time
+        // ie: 'strokes=1,jlpt=4' is cut as 'strokes=1,' and 'jlpt=4'
+        // first all kanjis with 1 stroke will be stored in the result set
+        // ',' indicates the next set of result must be united to the previous one
+        // so all the kanji of the jlpt will be united to the result set
+
+        // unite reads the end of the current keywordgroup but indicates what to do with the next keyword group
+        // previousUnite tells whether to unite or intersect current keygroup results with the global result set
+        bool unite;
+        bool previousUnite = true;
         QString copy = s;
         while(!copy.isEmpty())
         {
@@ -247,35 +256,79 @@ void KanjiDB::search(const QString &s, QSet<Kanji *> &set)
                 bool ok;
                 int ucs = ucsValue.toInt(&ok, 16);
                 if(ok)
-                    searchByUnicode(ucs, set, unite || first);
+                    searchByUnicode(ucs, set, previousUnite);
+                else if(!previousUnite)
+                    set.clear();
             } else if(copy.startsWith(jis208Key))
             {
-                searchByStringIndex(parseKey(copy, jis208Key, unite), kanjisJIS208, set, unite || first);
+                searchByStringIndex(parseKey(copy, jis208Key, unite), kanjisJIS208, set, previousUnite);
             } else if(copy.startsWith(jis212Key))
             {
-                searchByStringIndex(parseKey(copy, jis212Key, unite), kanjisJIS212, set, unite || first);
+                searchByStringIndex(parseKey(copy, jis212Key, unite), kanjisJIS212, set, previousUnite);
             } else if(copy.startsWith(jis213Key))
             {
-                searchByStringIndex(parseKey(copy, jis213Key, unite), kanjisJIS213, set, unite || first);
+                searchByStringIndex(parseKey(copy, jis213Key, unite), kanjisJIS213, set, previousUnite);
             } else if(copy.startsWith(jlptKey))
             {
                 bool ok;
                 int jlpt = parseKey(copy, jlptKey, unite).toInt(&ok, 10);
-                searchByIntIndex(jlpt, kanjisByJLPT, set, unite || first);
+                if(ok)
+                    searchByIntIndex(jlpt, kanjisByJLPT, set, previousUnite);
+                else if(!previousUnite)
+                    set.clear();
             } else if(copy.startsWith(gradeKey))
             {
                 bool ok;
                 int grade = parseKey(copy, gradeKey, unite).toInt(&ok, 10);
-                searchByIntIndex(grade, kanjisByGrade, set, unite || first);
+                if(ok)
+                    searchByIntIndex(grade, kanjisByGrade, set, previousUnite);
+                else if(!previousUnite)
+                    set.clear();
             } else if(copy.startsWith(strokesKey))
             {
                 bool ok;
                 int strokes = parseKey(copy, strokesKey, unite).toInt(&ok, 10);
-                searchByIntIndex(strokes, kanjisByStroke, set, unite || first);
+                if(ok)
+                    searchByIntIndex(strokes, kanjisByStroke, set, previousUnite);
+                else if(!previousUnite)
+                    set.clear();
+            } else if(copy.startsWith(strokesLessKey))
+            {
+                bool ok;
+                int strokes = parseKey(copy, strokesLessKey, unite).toInt(&ok, 10);
+                if(ok)
+                {
+                    QSet<Kanji *> tmpSet;
+                    for(int i = minStrokes; i < strokes; ++i)
+                        searchByIntIndex(i, kanjisByStroke, tmpSet, true);
+                    if(previousUnite)
+                        set.unite(tmpSet);
+                    else
+                        set.intersect(tmpSet);
+                } else if(!previousUnite)
+                    set.clear();
+            } else if(copy.startsWith(strokesMoreKey))
+            {
+                bool ok;
+                int strokes = parseKey(copy, strokesMoreKey, unite).toInt(&ok, 10);
+                if(ok)
+                {
+                    QSet<Kanji *> tmpSet;
+                    for(int i = maxStrokes; i > strokes ; --i)
+                        searchByIntIndex(i, kanjisByStroke, tmpSet, true);
+                    if(previousUnite)
+                        set.unite(tmpSet);
+                    else
+                        set.intersect(tmpSet);
+                } else if(!previousUnite)
+                    set.clear();
             } else
+            {
                 // only kanji supported yet -> multiple characters & no keywords = no result
+                set.clear();
                 copy = QString();
-            first = false;
+            }
+            previousUnite = unite;
         }
         // keywords (ucs=, jis208=, jis212=, jis213=, jlpt=, strokes[<>=], grade=, ',', ' ')
     }
@@ -286,6 +339,7 @@ QString KanjiDB::parseKey(QString &parsedString, const QString &key, bool &unite
     QString result;
     parsedString = parsedString.mid(key.size(), -1);
     int index = parsedString.indexOf(QRegExp("[, ]"));
+    // no more ' ' or ',' means it the last keygroup, unite is meaningless at this point
     if(index == -1)
     {
         result = parsedString;
@@ -307,7 +361,8 @@ void KanjiDB::searchByIntIndex(int index, const QMap<int, QSet<Kanji *> *> &sear
             setToFill.unite(*searchedMap[index]);
         else
             setToFill.intersect(*searchedMap[index]);
-    }
+    } else if(!unite)
+        setToFill.clear();
 }
 
 void KanjiDB::searchByStringIndex(const QString &indexString, const QMap<QString, Kanji *> &searchedMap, QSet<Kanji *> &setToFill, bool unite)
@@ -317,9 +372,13 @@ void KanjiDB::searchByStringIndex(const QString &indexString, const QMap<QString
         if(unite)
             setToFill.insert(searchedMap[indexString]);
         else
-            if(!setToFill.contains(searchedMap[indexString]))
-                setToFill.clear();
-    }
+        {
+            QSet<Kanji *> tmpSet;
+            tmpSet.insert(searchedMap[indexString]);
+            setToFill.intersect(tmpSet);
+        }
+    } else if(!unite)
+        setToFill.clear();
 }
 
 void KanjiDB::searchByUnicode(int unicode, QSet<Kanji *> &set, bool unite)
@@ -329,9 +388,13 @@ void KanjiDB::searchByUnicode(int unicode, QSet<Kanji *> &set, bool unite)
         if(unite)
             set.insert(kanjis[unicode]);
         else
-            if(!set.contains(kanjis[unicode]))
-                set.clear();
-    }
+        {
+            QSet<Kanji *> tmpSet;
+            tmpSet.insert(kanjis[unicode]);
+            set.intersect(tmpSet);
+        }
+    } else if(!unite)
+        set.clear();
 }
 
 void KanjiDB::findVariants(const Kanji *k, QSet<Kanji *> &variants)
