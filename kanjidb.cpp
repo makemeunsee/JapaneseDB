@@ -225,17 +225,16 @@ void KanjiDB::parseCharacterElement(const QDomElement &element){
     }
 }
 
-void KanjiDB::search(const QString &s, QSet<Kanji *> &set)
+void KanjiDB::search(const QString &s, QSet<Kanji *> &set) const
 {
     unsigned int size = s.size();
     if(size < 1)
         set.clear();
     else if(size == 1)
-    {
         searchByUnicode(s.at(0).unicode(), set, true);
-    } else
+    else
     {
-        //todo: regexp check?
+        // todo: regexp check?
         // here the request is parsed
         // we try to match keyword and process the request one keyword group at a time
         // ie: 'strokes=1,jlpt=4' is cut as 'strokes=1,' and 'jlpt=4'
@@ -334,7 +333,7 @@ void KanjiDB::search(const QString &s, QSet<Kanji *> &set)
     }
 }
 
-QString KanjiDB::parseKey(QString &parsedString, const QString &key, bool &unite)
+QString KanjiDB::parseKey(QString &parsedString, const QString &key, bool &unite) const
 {
     QString result;
     parsedString = parsedString.mid(key.size(), -1);
@@ -353,7 +352,7 @@ QString KanjiDB::parseKey(QString &parsedString, const QString &key, bool &unite
     return result;
 }
 
-void KanjiDB::searchByIntIndex(int index, const QMap<int, QSet<Kanji *> *> &searchedMap, QSet<Kanji *> &setToFill, bool unite)
+void KanjiDB::searchByIntIndex(int index, const QMap<int, QSet<Kanji *> *> &searchedMap, QSet<Kanji *> &setToFill, bool unite) const
 {
     if(index > 0 && searchedMap.contains(index))
     {
@@ -365,7 +364,7 @@ void KanjiDB::searchByIntIndex(int index, const QMap<int, QSet<Kanji *> *> &sear
         setToFill.clear();
 }
 
-void KanjiDB::searchByStringIndex(const QString &indexString, const QMap<QString, Kanji *> &searchedMap, QSet<Kanji *> &setToFill, bool unite)
+void KanjiDB::searchByStringIndex(const QString &indexString, const QMap<QString, Kanji *> &searchedMap, QSet<Kanji *> &setToFill, bool unite) const
 {
     if(indexString.size() > 0 && searchedMap.contains(indexString))
     {
@@ -381,7 +380,7 @@ void KanjiDB::searchByStringIndex(const QString &indexString, const QMap<QString
         setToFill.clear();
 }
 
-void KanjiDB::searchByUnicode(int unicode, QSet<Kanji *> &set, bool unite)
+void KanjiDB::searchByUnicode(int unicode, QSet<Kanji *> &set, bool unite) const
 {
     if(unicode > 0 && kanjis.contains(unicode))
     {
@@ -397,27 +396,19 @@ void KanjiDB::searchByUnicode(int unicode, QSet<Kanji *> &set, bool unite)
         set.clear();
 }
 
-void KanjiDB::findVariants(const Kanji *k, QSet<Kanji *> &variants)
+void KanjiDB::findVariants(const Kanji *k, QSet<Kanji *> &variants) const
 {
     foreach(int i, k->getUnicodeVariants())
-    {
         searchByUnicode(i, variants, true);
-    }
     foreach(QString s, k->getJis208Variants())
-    {
         searchByStringIndex(s, kanjisJIS208, variants, true);
-    }
     foreach(QString s, k->getJis212Variants())
-    {
         searchByStringIndex(s, kanjisJIS212, variants, true);
-    }
     foreach(QString s, k->getJis213Variants())
-    {
         searchByStringIndex(s, kanjisJIS213, variants, true);
-    }
 }
 
-void KanjiDB::search(char strokeCount, char jlpt, char grade, char radical, QSet<Kanji *> &set)
+void KanjiDB::search(char strokeCount, char jlpt, char grade, char radical, QSet<Kanji *> &set) const
 {
     bool united = false;
     if(strokeCount > 0)

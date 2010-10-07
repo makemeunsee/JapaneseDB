@@ -8,22 +8,24 @@
 
 class Kanji;
 
+typedef QSet<Kanji *> KanjiSet;
+
 class KanjiDB
 {
 public:
     KanjiDB();
 
-    void searchByUnicode(int, QSet<Kanji *> &, bool);
-    void searchByIntIndex(int, const QMap<int, QSet<Kanji *> *> &, QSet<Kanji *> &, bool);
-    void searchByStringIndex(const QString &, const QMap<QString, Kanji *> &, QSet<Kanji *> &, bool);
-    void searchByJIS208(const QString &, QSet<Kanji *> &, bool);
-    void searchByJIS212(const QString &, QSet<Kanji *> &, bool);
-    void searchByJIS213(const QString &, QSet<Kanji *> &, bool);
-    void search(char strokeCount, char jlpt, char grade, char radical, QSet<Kanji *> &filledList);
-    void search(const QString &, QSet<Kanji *> &);
+    void searchByUnicode(int, QSet<Kanji *> &, bool) const;
+    void searchByIntIndex(int, const QMap<int, QSet<Kanji *> *> &, QSet<Kanji *> &, bool) const;
+    void searchByStringIndex(const QString &, const QMap<QString, Kanji *> &, QSet<Kanji *> &, bool) const;
+    void searchByJIS208(const QString &, QSet<Kanji *> &, bool) const;
+    void searchByJIS212(const QString &, QSet<Kanji *> &, bool) const;
+    void searchByJIS213(const QString &, QSet<Kanji *> &, bool) const;
+    void search(char strokeCount, char jlpt, char grade, char radical, QSet<Kanji *> &filledList) const;
+    void search(const QString &, QSet<Kanji *> &) const;
     bool read(QIODevice *);
-    QString parseKey(QString &parsedString, const QString &key, bool &unite);
-    void findVariants(const Kanji *k, QSet<Kanji *> &setToFill);
+    QString parseKey(QString &parsedString, const QString &key, bool &unite) const;
+    void findVariants(const Kanji *k, QSet<Kanji *> &setToFill) const;
 
     static const QString ucsKey;
     static const QString gradeKey;
