@@ -5,6 +5,10 @@
 #include <QMap>
 #include <QSet>
 #include <QString>
+#include <QFile>
+#include <QDataStream>
+
+using namespace std;
 
 class Kanji;
 
@@ -21,11 +25,19 @@ public:
     void searchByJIS208(const QString &, QSet<Kanji *> &, bool) const;
     void searchByJIS212(const QString &, QSet<Kanji *> &, bool) const;
     void searchByJIS213(const QString &, QSet<Kanji *> &, bool) const;
-    void search(char strokeCount, char jlpt, char grade, char radical, QSet<Kanji *> &filledList) const;
     void search(const QString &, QSet<Kanji *> &) const;
-    bool read(QIODevice *);
     QString parseKey(QString &parsedString, const QString &key, bool &unite) const;
     void findVariants(const Kanji *k, QSet<Kanji *> &setToFill) const;
+
+    friend QDataStream &operator <<(QDataStream &stream, const KanjiDB &);
+    friend QDataStream &operator >>(QDataStream &stream, KanjiDB &);
+    bool readIndex(QIODevice *);
+    bool readKanjiDic(QIODevice *);
+    bool writeIndex(QIODevice *) const;
+    const QString errorString() const;
+
+    static const quint32 magic;
+    static const quint32 version;
 
     static const QString ucsKey;
     static const QString gradeKey;
@@ -40,6 +52,7 @@ public:
 private:
     void parseCharacterElement(const QDomElement &);
     QDomDocument domDocument;
+
     QMap<int, Kanji *> kanjis;
     QMap<QString, Kanji *> kanjisJIS208;
     QMap<QString, Kanji *> kanjisJIS212;
@@ -49,6 +62,8 @@ private:
     QMap<int, QSet<Kanji *> *> kanjisByGrade;
     QMap<int, QSet<Kanji *> *> kanjisByJLPT;
     int minStrokes, maxStrokes;
+
+    mutable QString error;
 };
 
 #endif // KANJIDB_H

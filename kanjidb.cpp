@@ -3,6 +3,9 @@
 #include "readingmeaninggroup.h"
 #include <QRegExp>
 
+const quint32 KanjiDB::magic = 0x5AD5AD15;
+const quint32 KanjiDB::version = 100;
+
 const QString KanjiDB::ucsKey = QString("ucs=");
 const QString KanjiDB::gradeKey = QString("grade=");
 const QString KanjiDB::jlptKey = QString("jlpt=");
@@ -21,7 +24,52 @@ KanjiDB::KanjiDB()
     minStrokes = 255;
 }
 
-bool KanjiDB::read(QIODevice *device)
+QDataStream &operator >>(QDataStream &stream, KanjiDB &db)
+{
+    //TODO
+    return stream;
+}
+
+QDataStream &operator <<(QDataStream &stream, const KanjiDB &db)
+{
+    //TODO
+    return stream;
+}
+
+bool KanjiDB::readIndex(QIODevice *device)
+{
+    QDataStream in(device);
+
+    // Read and check the header
+    quint32 _magic;
+    in >> _magic;
+    if (_magic != magic)
+    {
+        error = QString("Bad file format, not a recognized index file");
+        return false;
+    }
+
+    // Read the version
+    qint32 _version;
+    in >> _version;
+//    if (_version < 100)
+//        return XXX_BAD_FILE_TOO_OLD;
+//    if (version > 123)
+//        return XXX_BAD_FILE_TOO_NEW;
+
+//    if (version <= 110)
+//        in.setVersion(QDataStream::Qt_3_2);
+//    else
+    in.setVersion(QDataStream::Qt_4_0);
+
+    error = QString();
+    // Read the data
+    in >> *this;
+
+    return false;
+}
+
+bool KanjiDB::readKanjiDic(QIODevice *device)
 {
     QString errorStr;
     int errorLine;
@@ -30,14 +78,14 @@ bool KanjiDB::read(QIODevice *device)
     if (!domDocument.setContent(device, true, &errorStr, &errorLine,
                                 &errorColumn))
     {
-        //TODO raise log error
+        error = QString("At line %1, column %2: ").arg(errorLine).arg(errorColumn) + errorStr;
         return false;
     }
 
     QDomElement root = domDocument.documentElement();
     if (root.tagName() != "kanjidic2")
     {
-        //TODO raise not kanjidic2 file error
+        error = QString("Not a kanjidic2 file");
         return false;
     }
 
@@ -52,7 +100,31 @@ bool KanjiDB::read(QIODevice *device)
         child = child.nextSiblingElement("character");
     }
 
+    error = QString();
+
     return true;
+}
+
+bool KanjiDB::writeIndex(QIODevice *device) const
+{
+    QDataStream out(device);
+
+    // Write a header with a "magic number" and a version
+    out << (quint32)magic;
+    out << (qint32)version;
+
+    out.setVersion(QDataStream::Qt_4_0);
+
+    // Write the data
+    out << *this;
+
+    error = QString();
+    return true;
+}
+
+const QString KanjiDB::errorString() const
+{
+    return error;
 }
 
 void KanjiDB::parseCharacterElement(const QDomElement &element){
@@ -331,6 +403,7 @@ void KanjiDB::search(const QString &s, QSet<Kanji *> &set) const
         }
         // keywords (ucs=, jis208=, jis212=, jis213=, jlpt=, strokes[<>=], grade=, ',', ' ')
     }
+    return;
 }
 
 QString KanjiDB::parseKey(QString &parsedString, const QString &key, bool &unite) const
@@ -406,59 +479,4 @@ void KanjiDB::findVariants(const Kanji *k, QSet<Kanji *> &variants) const
         searchByStringIndex(s, kanjisJIS212, variants, true);
     foreach(QString s, k->getJis213Variants())
         searchByStringIndex(s, kanjisJIS213, variants, true);
-}
-
-void KanjiDB::search(char strokeCount, char jlpt, char grade, char radical, QSet<Kanji *> &set) const
-{
-    bool united = false;
-    if(strokeCount > 0)
-    {
-        if(kanjisByStroke[strokeCount] != 0)
-        {
-            set.unite(*kanjisByStroke[strokeCount]);
-            united = true;
-        }
-    }
-    if(jlpt > 0)
-    {
-        if(kanjisByJLPT[jlpt] != 0)
-        {
-            if(!united)
-            {
-                set.unite(*kanjisByJLPT[jlpt]);
-                united = true;
-            } else
-            {
-                set.intersect(*kanjisByJLPT[jlpt]);
-            }
-        }
-    }
-    if(grade > 0)
-    {
-        if(kanjisByGrade[grade] != 0)
-        {
-            if(!united)
-            {
-                set.unite(*kanjisByGrade[grade]);
-                united = true;
-            } else
-            {
-                set.intersect(*kanjisByGrade[grade]);
-            }
-        }
-    }
-    if(radical > 0)
-    {
-        if(kanjisByRadical[radical] != 0)
-        {
-            if(!united)
-            {
-                set.unite(*kanjisByRadical[radical]);
-                united = true;
-            } else
-            {
-                set.intersect(*kanjisByRadical[radical]);
-            }
-        }
-    }
 }
