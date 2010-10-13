@@ -18,6 +18,9 @@ class KanjiDB
 {
 public:
     KanjiDB();
+    ~KanjiDB();
+
+    void clear();
 
     void searchByUnicode(int, QSet<Kanji *> &, bool) const;
     void searchByIntIndex(int, const QMap<int, QSet<Kanji *> *> &, QSet<Kanji *> &, bool) const;

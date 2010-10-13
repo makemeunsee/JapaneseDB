@@ -1,8 +1,84 @@
 #include "kanji.h"
 
+Kanji::Kanji()
+{
+}
+
 Kanji::Kanji(const QString &string)
 {
     literal = string;
+}
+
+Kanji::~Kanji()
+{
+    foreach(ReadingMeaningGroup *rmg, rmGroups)
+        delete rmg;
+    rmGroups.clear();
+}
+
+QDataStream &operator >>(QDataStream &stream, Kanji &k)
+{
+    foreach(ReadingMeaningGroup *rmg, k.rmGroups)
+        delete rmg;
+    k.rmGroups.clear();
+    k.unicodeVariants.clear();;
+    k.jis208Variants.clear();
+    k.jis212Variants.clear();
+    k.jis213Variants.clear();
+    k.radicalNames.clear();
+    k.nanoriReadings.clear();
+
+    stream >> k.literal;
+    stream >> k.unicode;
+    stream >> k.jis208;
+    stream >> k.jis212;
+    stream >> k.jis213;
+    stream >> (quint8&) k.classicalRadical;
+    stream >> (quint8&) k.nelsonRadical;
+    stream >> (quint8&) k.grade;
+    stream >> (quint8&) k.strokeCount;
+    stream >> k.unicodeVariants;
+    stream >> k.jis208Variants;
+    stream >> k.jis212Variants;
+    stream >> k.jis213Variants;
+    stream >> (quint16&) k.frequency;
+    stream >> k.radicalNames;
+    stream >> (quint8&) k.jlpt;
+    quint32 rmgSize;
+    stream >> rmgSize;
+    for(int i = 0; i < rmgSize; ++i)
+    {
+        ReadingMeaningGroup *rmg = new ReadingMeaningGroup;
+        stream >> *rmg;
+        k.rmGroups.append(rmg);
+    }
+    stream >> k.nanoriReadings;
+    return stream;
+}
+
+QDataStream &operator <<(QDataStream &stream, const Kanji &k)
+{
+    stream << k.literal;
+    stream << k.unicode;
+    stream << k.jis208;
+    stream << k.jis212;
+    stream << k.jis213;
+    stream << (quint8&) k.classicalRadical;
+    stream << (quint8&) k.nelsonRadical;
+    stream << (quint8&) k.grade;
+    stream << (quint8&) k.strokeCount;
+    stream << k.unicodeVariants;
+    stream << k.jis208Variants;
+    stream << k.jis212Variants;
+    stream << k.jis213Variants;
+    stream << (quint16&) k.frequency;
+    stream << k.radicalNames;
+    stream << (quint8&) k.jlpt;
+    stream << k.rmGroups.size();
+    foreach(ReadingMeaningGroup *rmg, k.rmGroups)
+        stream << *rmg;
+    stream << k.nanoriReadings;
+    return stream;
 }
 
 const QString &Kanji::getLiteral() const
