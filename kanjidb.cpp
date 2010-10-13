@@ -19,20 +19,227 @@ const QString KanjiDB::jis213Key = QString("jis213=");
 KanjiDB::KanjiDB()
 {
     //empty list returned when no match found
-    kanjisByStroke[0] = new QSet<Kanji *>();
     maxStrokes = 0;
     minStrokes = 255;
 }
 
+KanjiDB::~KanjiDB()
+{
+    clear();
+}
+
+void KanjiDB::clear()
+{
+    //all kanjis are referenced by the unicode map
+    //delete them once from here, clean the rest
+    foreach(Kanji *k, kanjis.values())
+        delete k;
+    kanjis.clear();
+    kanjisJIS208.clear();
+    kanjisJIS212.clear();
+    kanjisJIS213.clear();
+    foreach(QSet<Kanji *> *set, kanjisByStroke)
+    {
+        set->clear();
+        delete set;
+    }
+    kanjisByStroke.clear();
+    foreach(QSet<Kanji *> *set, kanjisByJLPT)
+    {
+        set->clear();
+        delete set;
+    }
+    kanjisByJLPT.clear();
+    foreach(QSet<Kanji *> *set, kanjisByRadical)
+    {
+        set->clear();
+        delete set;
+    }
+    kanjisByRadical.clear();
+    foreach(QSet<Kanji *> *set, kanjisByGrade)
+    {
+        set->clear();
+        delete set;
+    }
+    kanjisByGrade.clear();
+}
+
 QDataStream &operator >>(QDataStream &stream, KanjiDB &db)
 {
-    //TODO
+    db.clear();
+    //all kanjis maps contain only kanji pointers,
+    //and each kanji exists only once, but has a pointer
+    //to it stored in different maps.
+    //kanjis are stored along with the value of their pointer
+    //we use this value to rebuild the maps efficiently:
+    //create a kanji only once when building the unicode map,
+    //then match old references to new references
+    //to build the other maps
+    QMap<quintptr, Kanji *> memMap;
+    int size;
+    stream >> size;
+    for(int i = 0; i < size; ++i)
+    {
+        int ucs;
+        Kanji *k = new Kanji;
+        quintptr p;
+        stream >> ucs >> *k >> p;
+        //used to match old reference to new references
+        memMap.insert(p, k);
+        //build unicode map (contains reference to all kanjis)
+        db.kanjis.insert(ucs, k);
+    }
+    stream >> size;
+    for(int i = 0; i < size; ++i)
+    {
+        QString jis208;
+        quintptr p;
+        stream >> jis208 >> p;
+        //build other map getting new reference from old reference
+        db.kanjisJIS208.insert(jis208, memMap[p]);
+    }
+    stream >> size;
+    for(int i = 0; i < size; ++i)
+    {
+        QString jis212;
+        quintptr p;
+        stream >> jis212 >> p;
+        db.kanjisJIS212.insert(jis212, memMap[p]);
+    }
+    stream >> size;
+    for(int i = 0; i < size; ++i)
+    {
+        QString jis213;
+        quintptr p;
+        stream >> jis213 >> p;
+        db.kanjisJIS213.insert(jis213, memMap[p]);
+    }
+    stream >> size;
+    for(int i = 0; i < size; ++i)
+    {
+        int key, subsize;
+        stream >> key >> subsize;
+        QSet<Kanji *> *set = new QSet<Kanji *>;
+        for(int j = 0; j < subsize; ++j)
+        {
+            quintptr p;
+            stream >> p;
+            set->insert(memMap[p]);
+        }
+        db.kanjisByStroke.insert(key, set);
+    }
+    stream >> size;
+    for(int i = 0; i < size; ++i)
+    {
+        int key, subsize;
+        stream >> key >> subsize;
+        QSet<Kanji *> *set = new QSet<Kanji *>;
+        for(int j = 0; j < subsize; ++j)
+        {
+            quintptr p;
+            stream >> p;
+            set->insert(memMap[p]);
+        }
+        db.kanjisByRadical.insert(key, set);
+    }
+    stream >> size;
+    for(int i = 0; i < size; ++i)
+    {
+        int key, subsize;
+        stream >> key >> subsize;
+        QSet<Kanji *> *set = new QSet<Kanji *>;
+        for(int j = 0; j < subsize; ++j)
+        {
+            quintptr p;
+            stream >> p;
+            set->insert(memMap[p]);
+        }
+        db.kanjisByGrade.insert(key, set);
+    }
+    stream >> size;
+    for(int i = 0; i < size; ++i)
+    {
+        int key, subsize;
+        stream >> key >> subsize;
+        QSet<Kanji *> *set = new QSet<Kanji *>;
+        for(int j = 0; j < subsize; ++j)
+        {
+            quintptr p;
+            stream >> p;
+            set->insert(memMap[p]);
+        }
+        db.kanjisByJLPT.insert(key, set);
+    }
+    stream >> (quint32&) db.minStrokes;
+    stream >> (quint32&) db.maxStrokes;
     return stream;
 }
 
 QDataStream &operator <<(QDataStream &stream, const KanjiDB &db)
 {
-    //TODO
+    //maps contain only pointers so a specific streaming is required
+    //the unicode map contains reference to all the kanjis
+    //we store the kanji by reading the unicode map,
+    //and store their pointer value along.
+    //other maps stream only the reference.
+    stream << db.kanjis.size();
+    QMapIterator<int, Kanji *> i(db.kanjis);
+    while (i.hasNext()) {
+        i.next();
+        stream << i.key() << *(i.value()) << (quintptr&) i.value();
+    }
+    stream << db.kanjisJIS208.size();
+    QMapIterator<QString, Kanji *> j(db.kanjisJIS208);
+    while (j.hasNext()) {
+        j.next();
+        stream << j.key() << (quintptr&) j.value();
+    }
+    stream << db.kanjisJIS212.size();
+    j = QMapIterator<QString, Kanji *>(db.kanjisJIS212);
+    while (j.hasNext()) {
+        j.next();
+        stream << j.key() << (quintptr&) j.value();
+    }
+    stream << db.kanjisJIS213.size();
+    j = QMapIterator<QString, Kanji *>(db.kanjisJIS213);
+    while (j.hasNext()) {
+        j.next();
+        stream << j.key() << (quintptr&) j.value();
+    }
+    stream << db.kanjisByStroke.size();
+    QMapIterator<int, QSet<Kanji *> *> k(db.kanjisByStroke);
+    while (k.hasNext()) {
+        k.next();
+        stream << k.key() << k.value()->size();
+        foreach(Kanji *kj, *(k.value()))
+            stream << (quintptr&) kj;
+    }
+    stream << db.kanjisByRadical.size();
+    k = QMapIterator<int, QSet<Kanji *> *>(db.kanjisByRadical);
+    while (k.hasNext()) {
+        k.next();
+        stream << k.key() << k.value()->size();
+        foreach(Kanji *kj, *(k.value()))
+            stream << (quintptr&) kj;
+    }
+    stream << db.kanjisByGrade.size();
+    k = QMapIterator<int, QSet<Kanji *> *>(db.kanjisByGrade);
+    while (k.hasNext()) {
+        k.next();
+        stream << k.key() << k.value()->size();
+        foreach(Kanji *kj, *(k.value()))
+            stream << (quintptr&) kj;
+    }
+    stream << db.kanjisByJLPT.size();
+    k = QMapIterator<int, QSet<Kanji *> *>(db.kanjisByJLPT);
+    while (k.hasNext()) {
+        k.next();
+        stream << k.key() << k.value()->size();
+        foreach(Kanji *kj, *(k.value()))
+            stream << (quintptr&) kj;
+    }
+    stream << db.minStrokes;
+    stream << db.maxStrokes;
     return stream;
 }
 
@@ -66,7 +273,7 @@ bool KanjiDB::readIndex(QIODevice *device)
     // Read the data
     in >> *this;
 
-    return false;
+    return true;
 }
 
 bool KanjiDB::readKanjiDic(QIODevice *device)
@@ -101,7 +308,6 @@ bool KanjiDB::readKanjiDic(QIODevice *device)
     }
 
     error = QString();
-
     return true;
 }
 

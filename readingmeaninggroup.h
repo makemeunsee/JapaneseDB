@@ -2,6 +2,7 @@
 #define READINGMEANINGGROUP_H
 
 #include <QSet>
+#include <QDataStream>
 
 class QString;
 
@@ -17,6 +18,9 @@ public:
     const QSet<QString> & getKunReadings();
     const QSet<QString> & getFrenchMeanings();
     const QSet<QString> & getEnglishMeanings();
+
+    friend QDataStream &operator >>(QDataStream &stream, ReadingMeaningGroup &rmg);
+    friend QDataStream &operator <<(QDataStream &stream, const ReadingMeaningGroup &rmg);
 
 private:
     QSet<QString> onReadings;

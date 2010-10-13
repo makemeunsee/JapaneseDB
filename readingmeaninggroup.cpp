@@ -4,6 +4,24 @@ ReadingMeaningGroup::ReadingMeaningGroup()
 {
 }
 
+QDataStream &operator >>(QDataStream &stream, ReadingMeaningGroup &rmg)
+{
+    stream >> rmg.onReadings;
+    stream >> rmg.kunReadings;
+    stream >> rmg.englishMeanings;
+    stream >> rmg.frenchMeanings;
+    return stream;
+}
+
+QDataStream &operator <<(QDataStream &stream, const ReadingMeaningGroup &rmg)
+{
+    stream << rmg.onReadings;
+    stream << rmg.kunReadings;
+    stream << rmg.englishMeanings;
+    stream << rmg.frenchMeanings;
+    return stream;
+}
+
 const QSet<QString> & ReadingMeaningGroup::getOnReadings()
 {
     return onReadings;

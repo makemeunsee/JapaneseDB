@@ -4,13 +4,15 @@
 #include <QString>
 #include <QSet>
 #include <QList>
-
-class ReadingMeaningGroup;
+#include <QDataStream>
+#include "readingmeaninggroup.h"
 
 class Kanji
 {
 public:
+    Kanji();
     Kanji(const QString &);
+    ~Kanji();
     const QString &getLiteral() const;
     int getUnicode() const;
     const QString &getJis208() const;
@@ -30,6 +32,9 @@ public:
     char getJLPT() const;
     const QList<ReadingMeaningGroup *> & getReadingMeaningGroups() const;
     const QSet<QString> & getNanoriReadings() const;
+
+    friend QDataStream &operator <<(QDataStream &stream, const Kanji &);
+    friend QDataStream &operator >>(QDataStream &stream, Kanji &);
 
     void setUnicode(int);
     void setJis208(const QString &);
