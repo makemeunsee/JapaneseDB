@@ -2,7 +2,7 @@
 #define KANJI_H
 
 #include <QString>
-#include <QSet>
+#include <QMap>
 #include <QList>
 #include <QDataStream>
 #include "readingmeaninggroup.h"
@@ -77,5 +77,7 @@ private:
     // readings for names only
     QSet<QString> nanoriReadings;
 };
+
+typedef QMap<int, Kanji *> KanjiSet;
 
 #endif // KANJI_H

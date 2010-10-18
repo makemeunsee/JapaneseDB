@@ -1,18 +1,16 @@
 #ifndef KANJIDB_H
 #define KANJIDB_H
 
-#include <QDomDocument>
 #include <QMap>
 #include <QSet>
 #include <QString>
 #include <QFile>
 #include <QDataStream>
+#include "kanji.h"
 
 using namespace std;
 
-class Kanji;
-
-typedef QSet<Kanji *> KanjiSet;
+class QDomElement;
 
 class KanjiDB
 {
@@ -22,15 +20,12 @@ public:
 
     void clear();
 
-    void searchByUnicode(int, QSet<Kanji *> &, bool) const;
-    void searchByIntIndex(int, const QMap<int, QSet<Kanji *> *> &, QSet<Kanji *> &, bool) const;
-    void searchByStringIndex(const QString &, const QMap<QString, Kanji *> &, QSet<Kanji *> &, bool) const;
-    void searchByJIS208(const QString &, QSet<Kanji *> &, bool) const;
-    void searchByJIS212(const QString &, QSet<Kanji *> &, bool) const;
-    void searchByJIS213(const QString &, QSet<Kanji *> &, bool) const;
-    void search(const QString &, QSet<Kanji *> &) const;
+    void searchByUnicode(int, KanjiSet &, bool, int) const;
+    void searchByIntIndex(int, const QMap<int, QSet<Kanji *> *> &, KanjiSet &, bool) const;
+    void searchByStringIndex(const QString &, const QMap<QString, Kanji *> &, KanjiSet &, bool) const;
+    void search(const QString &, KanjiSet &) const;
     QString parseKey(QString &parsedString, const QString &key, bool &unite) const;
-    void findVariants(const Kanji *k, QSet<Kanji *> &setToFill) const;
+    void findVariants(const Kanji *k, KanjiSet &setToFill) const;
 
     friend QDataStream &operator <<(QDataStream &stream, const KanjiDB &);
     friend QDataStream &operator >>(QDataStream &stream, KanjiDB &);
@@ -54,7 +49,6 @@ public:
 
 private:
     void parseCharacterElement(const QDomElement &);
-    QDomDocument domDocument;
 
     QMap<int, Kanji *> kanjis;
     QMap<QString, Kanji *> kanjisJIS208;
