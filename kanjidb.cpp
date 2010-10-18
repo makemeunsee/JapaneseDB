@@ -509,8 +509,6 @@ void KanjiDB::search(const QString &s, KanjiSet &set) const
     unsigned int size = s.size();
     if(size < 1)
         set.clear();
-    else if(size == 1)
-        searchByUnicode(s.at(0).unicode(), set, true, s.at(0).unicode());
     else
     {
         QString regexp(ucsKey+"|"+gradeKey+"|"+jlptKey+"|"+strokesKey+"|"
