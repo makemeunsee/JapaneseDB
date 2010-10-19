@@ -46,7 +46,7 @@ QDataStream &operator >>(QDataStream &stream, Kanji &k)
     stream >> (quint8&) k.jlpt;
     quint32 rmgSize;
     stream >> rmgSize;
-    for(int i = 0; i < rmgSize; ++i)
+    for(quint32 i = 0; i < rmgSize; ++i)
     {
         ReadingMeaningGroup *rmg = new ReadingMeaningGroup;
         stream >> *rmg;
