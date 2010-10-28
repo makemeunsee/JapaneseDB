@@ -4,6 +4,7 @@
 #include <QMap>
 #include <QSet>
 #include <QString>
+#include <QStringList>
 #include <QFile>
 #include <QDataStream>
 #include "kanji.h"
@@ -37,6 +38,10 @@ public:
     static const quint32 magic;
     static const quint32 version;
 
+    static const QString unionSeps;
+    static const QString interSeps;
+    static const QString seps;
+    static const QString notSeps;
     static const QString ucsKey;
     static const QString gradeKey;
     static const QString jlptKey;
@@ -46,6 +51,17 @@ public:
     static const QString jis208Key;
     static const QString jis212Key;
     static const QString jis213Key;
+    static const int keyCount = 9;
+    static const QString allKeys[keyCount];
+    static const QString regexp;
+    static const QRegExp searchRegexp;
+
+    static inline QStringList fromArray(const QString *list, int size){
+        QStringList l;
+        for(int i = 0; i < size; ++i)
+            l << list[i];
+        return l;
+    }
 
 private:
     void parseCharacterElement(const QDomElement &);
