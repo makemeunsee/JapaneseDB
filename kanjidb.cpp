@@ -6,15 +6,22 @@
 const quint32 KanjiDB::magic = 0x5AD5AD15;
 const quint32 KanjiDB::version = 100;
 
-const QString KanjiDB::ucsKey = QString("ucs=");
-const QString KanjiDB::gradeKey = QString("grade=");
-const QString KanjiDB::jlptKey = QString("jlpt=");
-const QString KanjiDB::strokesKey = QString("strokes=");
-const QString KanjiDB::strokesMoreKey = QString("strokes>");
-const QString KanjiDB::strokesLessKey = QString("strokes<");
-const QString KanjiDB::jis208Key = QString("jis208=");
-const QString KanjiDB::jis212Key = QString("jis212=");
-const QString KanjiDB::jis213Key = QString("jis213=");
+const QString KanjiDB::interSeps("&\\+");
+const QString KanjiDB::unionSeps(" ,;");
+const QString KanjiDB::seps("["+interSeps+unionSeps+"]");
+const QString KanjiDB::notSeps("[^"+interSeps+unionSeps+"]");
+const QString KanjiDB::ucsKey("ucs=");
+const QString KanjiDB::gradeKey("grade=");
+const QString KanjiDB::jlptKey("jlpt=");
+const QString KanjiDB::strokesKey("strokes=");
+const QString KanjiDB::strokesMoreKey("strokes>");
+const QString KanjiDB::strokesLessKey("strokes<");
+const QString KanjiDB::jis208Key("jis208=");
+const QString KanjiDB::jis212Key("jis212=");
+const QString KanjiDB::jis213Key("jis213=");
+const QString KanjiDB::allKeys[keyCount] = {gradeKey, jlptKey, jis208Key, jis212Key, jis213Key, strokesKey, strokesLessKey, strokesMoreKey, ucsKey};
+const QString KanjiDB::regexp(fromArray(allKeys, keyCount).join("|"));
+const QRegExp KanjiDB::searchRegexp("(("+regexp+")"+notSeps+"+)("+seps+"("+regexp+")"+notSeps+"+)*");
 
 KanjiDB::KanjiDB()
 {
@@ -337,7 +344,8 @@ const QString KanjiDB::errorString() const
 void KanjiDB::parseCharacterElement(const QDomElement &element){
     QString title = element.firstChildElement("literal").text();
     Q_ASSERT(title.length() > 0);
-    Kanji *k = new Kanji(title);
+    Kanji *k = new Kanji();
+    k->setLiteral(title);
 
     bool ok;
 
@@ -511,12 +519,8 @@ void KanjiDB::search(const QString &s, KanjiSet &set) const
         set.clear();
     else
     {
-        QString regexp(ucsKey+"|"+gradeKey+"|"+jlptKey+"|"+strokesKey+"|"
-                       +strokesMoreKey+"|"+strokesLessKey+"|"+jis208Key+"|"+
-                       jis212Key+"|"+jis213Key);
-        QRegExp fullRegexp("(("+regexp+")[^ ,]+)([, ]("+regexp+")[^ ,]+)*");
         // attempt to read each character and look it up
-        if(!fullRegexp.exactMatch(s))
+        if(!searchRegexp.exactMatch(s))
             for(int i = 0; i < s.length(); ++i)
                 searchByUnicode(s[i].unicode(), set, true, i);
         else
@@ -629,7 +633,7 @@ QString KanjiDB::parseKey(QString &parsedString, const QString &key, bool &unite
 {
     QString result;
     parsedString = parsedString.mid(key.size(), -1);
-    int index = parsedString.indexOf(QRegExp("[, ]"));
+    int index = parsedString.indexOf(QRegExp(seps));
     // no more ' ' or ',' means it the last keygroup, unite is meaningless at this point
     if(index == -1)
     {
@@ -637,7 +641,7 @@ QString KanjiDB::parseKey(QString &parsedString, const QString &key, bool &unite
         parsedString = QString();
     } else
     {
-        unite = parsedString.at(index) == QChar(',');
+        unite = unionSeps.contains(parsedString.at(index));
         result = parsedString.mid(0, index);
         parsedString = parsedString.mid(index+1, -1);
     }
@@ -647,13 +651,13 @@ QString KanjiDB::parseKey(QString &parsedString, const QString &key, bool &unite
 void KanjiDB::searchByIntIndex(int index, const QMap<int, QSet<Kanji *> *> &searchedMap, KanjiSet &setToFill, bool unite) const
 {
     if(index > 0 && searchedMap.contains(index))
+    {
         foreach(Kanji *k, *searchedMap[index])
             if(unite)
                 setToFill.insert(k->getUnicode(), k);
-            else
-                if(!setToFill.contains(k->getUnicode()))
+            else if(!setToFill.contains(k->getUnicode()))
                     setToFill.remove(k->getUnicode());
-    else if(!unite)
+    } else if(!unite)
         setToFill.clear();
 }
 
