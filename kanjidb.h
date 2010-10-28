@@ -9,8 +9,6 @@
 #include <QDataStream>
 #include "kanji.h"
 
-using namespace std;
-
 class QDomElement;
 
 class KanjiDB
