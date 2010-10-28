@@ -652,11 +652,19 @@ void KanjiDB::searchByIntIndex(int index, const QMap<int, QSet<Kanji *> *> &sear
 {
     if(index > 0 && searchedMap.contains(index))
     {
-        foreach(Kanji *k, *searchedMap[index])
-            if(unite)
+        if(unite)
+            foreach(Kanji *k, *searchedMap[index])
                 setToFill.insert(k->getUnicode(), k);
-            else if(!setToFill.contains(k->getUnicode()))
-                    setToFill.remove(k->getUnicode());
+        else
+        {
+            KanjiSetIterator iter(setToFill);
+            while(iter.hasNext())
+            {
+                iter.next();
+                if(!searchedMap[index]->contains(iter.value()))
+                    iter.remove();
+            }
+        }
     } else if(!unite)
         setToFill.clear();
 }
@@ -669,8 +677,12 @@ void KanjiDB::searchByStringIndex(const QString &indexString, const QMap<QString
         if(unite)
             setToFill.insert(k->getUnicode(), k);
         else
-            if(!setToFill.contains(k->getUnicode()))
-                setToFill.remove(k->getUnicode());
+        {
+            bool contained = setToFill.contains(k->getUnicode());
+            setToFill.clear();
+            if(contained)
+                setToFill.insert(k->getUnicode(), k);
+        }
     } else if(!unite)
         setToFill.clear();
 }
@@ -683,8 +695,13 @@ void KanjiDB::searchByUnicode(int unicode, KanjiSet &set, bool unite, int positi
         if(unite)
             set.insert(position, k);
         else
-            if(!set.contains(k->getUnicode()))
-                set.remove(k->getUnicode());
+        {
+            // position is always equal to unicode when unite is false
+            bool contained = set.contains(unicode);
+            set.clear();
+            if(contained)
+                set.insert(unicode, k);
+        }
     } else if(!unite)
         set.clear();
 }
