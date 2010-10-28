@@ -344,7 +344,8 @@ const QString KanjiDB::errorString() const
 void KanjiDB::parseCharacterElement(const QDomElement &element){
     QString title = element.firstChildElement("literal").text();
     Q_ASSERT(title.length() > 0);
-    Kanji *k = new Kanji(title);
+    Kanji *k = new Kanji();
+    k->setLiteral(title);
 
     bool ok;
 
@@ -650,13 +651,13 @@ QString KanjiDB::parseKey(QString &parsedString, const QString &key, bool &unite
 void KanjiDB::searchByIntIndex(int index, const QMap<int, QSet<Kanji *> *> &searchedMap, KanjiSet &setToFill, bool unite) const
 {
     if(index > 0 && searchedMap.contains(index))
+    {
         foreach(Kanji *k, *searchedMap[index])
             if(unite)
                 setToFill.insert(k->getUnicode(), k);
-            else
-                if(!setToFill.contains(k->getUnicode()))
+            else if(!setToFill.contains(k->getUnicode()))
                     setToFill.remove(k->getUnicode());
-    else if(!unite)
+    } else if(!unite)
         setToFill.clear();
 }
 

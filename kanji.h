@@ -11,7 +11,6 @@ class Kanji
 {
 public:
     Kanji();
-    Kanji(const QString &);
     ~Kanji();
     const QString &getLiteral() const;
     int getUnicode() const;
@@ -36,6 +35,7 @@ public:
     friend QDataStream &operator <<(QDataStream &stream, const Kanji &);
     friend QDataStream &operator >>(QDataStream &stream, Kanji &);
 
+    void setLiteral(const QString &);
     void setUnicode(int);
     void setJis208(const QString &);
     void setJis212(const QString &);

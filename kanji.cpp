@@ -1,12 +1,7 @@
 #include "kanji.h"
 
-Kanji::Kanji()
+Kanji::Kanji() : unicode(0), classicalRadical(0), nelsonRadical(0), grade(0), strokeCount(0), frequency(0), jlpt(0)
 {
-}
-
-Kanji::Kanji(const QString &string)
-{
-    literal = string;
 }
 
 Kanji::~Kanji()
@@ -84,6 +79,11 @@ QDataStream &operator <<(QDataStream &stream, const Kanji &k)
 const QString &Kanji::getLiteral() const
 {
     return literal;
+}
+
+void Kanji::setLiteral(const QString &s)
+{
+    literal = s;
 }
 
 int Kanji::getUnicode() const
