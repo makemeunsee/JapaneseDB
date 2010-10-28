@@ -79,5 +79,6 @@ private:
 };
 
 typedef QMap<int, Kanji *> KanjiSet;
+typedef QMutableMapIterator<int, Kanji *> KanjiSetIterator;
 
 #endif // KANJI_H

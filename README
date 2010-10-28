@@ -1,0 +1,17 @@
+Introduction
+============
+
+JapaneseDB is QT based library designed to provide high level functions to browse the Kanjidic2 kanji dictionary (and soon the Edict Japanese dictionary too).
+
+
+Building
+========
+
+Qt 4 SDK required.
+Usual qmake and make...
+
+	
+License
+=======
+
+Licensed under the GPL license version 2 or later.
