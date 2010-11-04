@@ -86,12 +86,12 @@ void Kanji::setLiteral(const QString &s)
     literal = s;
 }
 
-int Kanji::getUnicode() const
+unsigned int Kanji::getUnicode() const
 {
     return unicode;
 }
 
-void Kanji::setUnicode(int u)
+void Kanji::setUnicode(unsigned int u)
 {
     unicode = u;
 }
@@ -126,47 +126,47 @@ void Kanji::setJis213(const QString &s)
     jis213 = s;
 }
 
-char Kanji::getClassicalRadical() const
+unsigned char Kanji::getClassicalRadical() const
 {
     return classicalRadical;
 }
 
-char Kanji::getNelsonRadical() const
+unsigned char Kanji::getNelsonRadical() const
 {
     return nelsonRadical;
 }
 
-void Kanji::setClassicalRadical(char radical)
+void Kanji::setClassicalRadical(unsigned char radical)
 {
     classicalRadical = radical;
 }
 
-void Kanji::setNelsonRadical(char radical)
+void Kanji::setNelsonRadical(unsigned char radical)
 {
     nelsonRadical = radical;
 }
 
-char Kanji::getGrade() const
+unsigned char Kanji::getGrade() const
 {
     return grade;
 }
 
-void Kanji::setGrade(char g)
+void Kanji::setGrade(unsigned char g)
 {
     grade = g;
 }
 
-char Kanji::getStrokeCount() const
+unsigned char Kanji::getStrokeCount() const
 {
     return strokeCount;
 }
 
-void Kanji::setStrokeCount(char count)
+void Kanji::setStrokeCount(unsigned char count)
 {
     strokeCount = count;
 }
 
-const QSet<int> & Kanji::getUnicodeVariants() const
+const QSet<unsigned int> & Kanji::getUnicodeVariants() const
 {
     return unicodeVariants;
 }
@@ -186,7 +186,7 @@ const QSet<QString> & Kanji::getJis213Variants() const
     return jis213Variants;
 }
 
-void Kanji::addUnicodeVariant(int ucs)
+void Kanji::addUnicodeVariant(unsigned int ucs)
 {
     unicodeVariants.insert(ucs);
 }
@@ -207,12 +207,12 @@ void Kanji::addJis213Variant(const QString &s)
 }
 
 // if 0 -> not one of the 2500 most frequent
-short Kanji::getFrequency() const
+unsigned short Kanji::getFrequency() const
 {
     return frequency;
 }
 
-void Kanji::setFrequency(short freq)
+void Kanji::setFrequency(unsigned short freq)
 {
     frequency = freq;
 }
@@ -227,12 +227,12 @@ void Kanji::addNameAsRadical(const QString &radicalName)
     radicalNames.insert(radicalName);
 }
 
-char Kanji::getJLPT() const
+unsigned char Kanji::getJLPT() const
 {
     return jlpt;
 }
 
-void Kanji::setJLPT(char j)
+void Kanji::setJLPT(unsigned char j)
 {
     jlpt = j;
 }
