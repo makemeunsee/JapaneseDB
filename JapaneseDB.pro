@@ -14,4 +14,5 @@ HEADERS += kanji.h \
     readingmeaninggroup.h \
     radicals.h
 
-OTHER_FILES +=
+OTHER_FILES += \
+    README
