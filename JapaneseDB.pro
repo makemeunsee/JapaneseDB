@@ -11,7 +11,8 @@ SOURCES += kanji.cpp \
     readingmeaninggroup.cpp
 HEADERS += kanji.h \
     kanjidb.h \
-    readingmeaninggroup.h
+    readingmeaninggroup.h \
+    radicals.h
 
 OTHER_FILES += \
-    radicals
+    README

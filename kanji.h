@@ -13,22 +13,22 @@ public:
     Kanji();
     ~Kanji();
     const QString &getLiteral() const;
-    int getUnicode() const;
+    unsigned int getUnicode() const;
     const QString &getJis208() const;
     const QString &getJis212() const;
     const QString &getJis213() const;
-    char getClassicalRadical() const;
-    char getNelsonRadical() const;
-    char getGrade() const;
-    char getStrokeCount() const;
-    const QSet<int> & getUnicodeVariants() const;
+    unsigned char getClassicalRadical() const;
+    unsigned char getNelsonRadical() const;
+    unsigned char getGrade() const;
+    unsigned char getStrokeCount() const;
+    const QSet<unsigned int> & getUnicodeVariants() const;
     const QSet<QString> & getJis208Variants() const;
     const QSet<QString> & getJis212Variants() const;
     const QSet<QString> & getJis213Variants() const;
     // if 0 -> not one of the 2500 most frequent
-    short getFrequency() const;
+    unsigned short getFrequency() const;
     const QSet<QString> & getNamesAsRadical() const;
-    char getJLPT() const;
+    unsigned char getJLPT() const;
     const QList<ReadingMeaningGroup *> & getReadingMeaningGroups() const;
     const QSet<QString> & getNanoriReadings() const;
 
@@ -36,49 +36,49 @@ public:
     friend QDataStream &operator >>(QDataStream &stream, Kanji &);
 
     void setLiteral(const QString &);
-    void setUnicode(int);
+    void setUnicode(unsigned int);
     void setJis208(const QString &);
     void setJis212(const QString &);
     void setJis213(const QString &);
-    void setClassicalRadical(char);
-    void setNelsonRadical(char);
-    void setGrade(char);
-    void setStrokeCount(char);
-    void addUnicodeVariant(int);
+    void setClassicalRadical(unsigned char);
+    void setNelsonRadical(unsigned char);
+    void setGrade(unsigned char);
+    void setStrokeCount(unsigned char);
+    void addUnicodeVariant(unsigned int);
     void addJis208Variant(const QString &);
     void addJis212Variant(const QString &);
     void addJis213Variant(const QString &);
-    void setFrequency(short);
+    void setFrequency(unsigned short);
     void addNameAsRadical(const QString &);
-    void setJLPT(char);
+    void setJLPT(unsigned char);
     void addReadingMeaningGroup(ReadingMeaningGroup *);
     void addNanoriReading(const QString &);
 
 
 private:
     QString literal;
-    int unicode;
+    unsigned int unicode;
     QString jis208;
     QString jis212;
     QString jis213;
-    char classicalRadical;
-    char nelsonRadical;
-    char grade;
-    char strokeCount;
-    QSet<int> unicodeVariants;
+    unsigned char classicalRadical;
+    unsigned char nelsonRadical;
+    unsigned char grade;
+    unsigned char strokeCount;
+    QSet<unsigned int> unicodeVariants;
     QSet<QString> jis208Variants;
     QSet<QString> jis212Variants;
     QSet<QString> jis213Variants;
-    short frequency;
+    unsigned short frequency;
     // names in hiragana if this kanji is a radical and has a name
     QSet<QString> radicalNames;
-    char jlpt;
+    unsigned char jlpt;
     QList<ReadingMeaningGroup *> rmGroups;
     // readings for names only
     QSet<QString> nanoriReadings;
 };
 
-typedef QMap<int, Kanji *> KanjiSet;
-typedef QMutableMapIterator<int, Kanji *> KanjiSetIterator;
+typedef QMap<unsigned int, Kanji *> KanjiSet;
+typedef QMutableMapIterator<unsigned int, Kanji *> KanjiSetIterator;
 
 #endif // KANJI_H

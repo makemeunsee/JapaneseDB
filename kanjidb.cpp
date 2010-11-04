@@ -1,7 +1,9 @@
 #include "kanjidb.h"
 #include <QDomDocument>
+#include <QTextStream>
 #include "readingmeaninggroup.h"
 #include <QRegExp>
+#include "radicals.h"
 
 const quint32 KanjiDB::magic = 0x5AD5AD15;
 const quint32 KanjiDB::version = 100;
@@ -19,7 +21,8 @@ const QString KanjiDB::strokesLessKey("strokes<");
 const QString KanjiDB::jis208Key("jis208=");
 const QString KanjiDB::jis212Key("jis212=");
 const QString KanjiDB::jis213Key("jis213=");
-const QString KanjiDB::allKeys[keyCount] = {gradeKey, jlptKey, jis208Key, jis212Key, jis213Key, strokesKey, strokesLessKey, strokesMoreKey, ucsKey};
+const QString KanjiDB::radicalKey("radical=");
+const QString KanjiDB::allKeys[keyCount] = {gradeKey, jlptKey, jis208Key, jis212Key, jis213Key, radicalKey, strokesKey, strokesLessKey, strokesMoreKey, ucsKey};
 const QString KanjiDB::regexp(fromArray(allKeys, keyCount).join("|"));
 const QRegExp KanjiDB::searchRegexp("(("+regexp+")"+notSeps+"+)("+seps+"("+regexp+")"+notSeps+"+)*");
 
@@ -28,11 +31,15 @@ KanjiDB::KanjiDB()
     //empty list returned when no match found
     maxStrokes = 0;
     minStrokes = 255;
+    initRadicals();
 }
 
 KanjiDB::~KanjiDB()
 {
     clear();
+    foreach(Kanji *k, radicalsMap.values())
+        delete k;
+    radicalsMap.clear();
 }
 
 void KanjiDB::clear()
@@ -57,18 +64,18 @@ void KanjiDB::clear()
         delete set;
     }
     kanjisByJLPT.clear();
-    foreach(QSet<Kanji *> *set, kanjisByRadical)
-    {
-        set->clear();
-        delete set;
-    }
-    kanjisByRadical.clear();
     foreach(QSet<Kanji *> *set, kanjisByGrade)
     {
         set->clear();
         delete set;
     }
     kanjisByGrade.clear();
+    foreach(QSet<Kanji *> *set, kanjisByRadical)
+    {
+        set->clear();
+        delete set;
+    }
+    kanjisByRadical.clear();
 }
 
 QDataStream &operator >>(QDataStream &stream, KanjiDB &db)
@@ -83,11 +90,11 @@ QDataStream &operator >>(QDataStream &stream, KanjiDB &db)
     //then match old references to new references
     //to build the other maps
     QMap<quintptr, Kanji *> memMap;
-    int size;
+    unsigned int size;
     stream >> size;
-    for(int i = 0; i < size; ++i)
+    for(unsigned int i = 0; i < size; ++i)
     {
-        int ucs;
+        unsigned int ucs;
         Kanji *k = new Kanji;
         quintptr p;
         stream >> ucs >> *k >> p;
@@ -97,7 +104,7 @@ QDataStream &operator >>(QDataStream &stream, KanjiDB &db)
         db.kanjis.insert(ucs, k);
     }
     stream >> size;
-    for(int i = 0; i < size; ++i)
+    for(unsigned int i = 0; i < size; ++i)
     {
         QString jis208;
         quintptr p;
@@ -106,7 +113,7 @@ QDataStream &operator >>(QDataStream &stream, KanjiDB &db)
         db.kanjisJIS208.insert(jis208, memMap[p]);
     }
     stream >> size;
-    for(int i = 0; i < size; ++i)
+    for(unsigned int i = 0; i < size; ++i)
     {
         QString jis212;
         quintptr p;
@@ -114,7 +121,7 @@ QDataStream &operator >>(QDataStream &stream, KanjiDB &db)
         db.kanjisJIS212.insert(jis212, memMap[p]);
     }
     stream >> size;
-    for(int i = 0; i < size; ++i)
+    for(unsigned int i = 0; i < size; ++i)
     {
         QString jis213;
         quintptr p;
@@ -122,12 +129,12 @@ QDataStream &operator >>(QDataStream &stream, KanjiDB &db)
         db.kanjisJIS213.insert(jis213, memMap[p]);
     }
     stream >> size;
-    for(int i = 0; i < size; ++i)
+    for(unsigned int i = 0; i < size; ++i)
     {
-        int key, subsize;
+        unsigned int key, subsize;
         stream >> key >> subsize;
         QSet<Kanji *> *set = new QSet<Kanji *>;
-        for(int j = 0; j < subsize; ++j)
+        for(unsigned int j = 0; j < subsize; ++j)
         {
             quintptr p;
             stream >> p;
@@ -136,12 +143,12 @@ QDataStream &operator >>(QDataStream &stream, KanjiDB &db)
         db.kanjisByStroke.insert(key, set);
     }
     stream >> size;
-    for(int i = 0; i < size; ++i)
+    for(unsigned int i = 0; i < size; ++i)
     {
-        int key, subsize;
+        unsigned int key, subsize;
         stream >> key >> subsize;
         QSet<Kanji *> *set = new QSet<Kanji *>;
-        for(int j = 0; j < subsize; ++j)
+        for(unsigned int j = 0; j < subsize; ++j)
         {
             quintptr p;
             stream >> p;
@@ -150,12 +157,12 @@ QDataStream &operator >>(QDataStream &stream, KanjiDB &db)
         db.kanjisByRadical.insert(key, set);
     }
     stream >> size;
-    for(int i = 0; i < size; ++i)
+    for(unsigned int i = 0; i < size; ++i)
     {
-        int key, subsize;
+        unsigned int key, subsize;
         stream >> key >> subsize;
         QSet<Kanji *> *set = new QSet<Kanji *>;
-        for(int j = 0; j < subsize; ++j)
+        for(unsigned int j = 0; j < subsize; ++j)
         {
             quintptr p;
             stream >> p;
@@ -164,12 +171,12 @@ QDataStream &operator >>(QDataStream &stream, KanjiDB &db)
         db.kanjisByGrade.insert(key, set);
     }
     stream >> size;
-    for(int i = 0; i < size; ++i)
+    for(unsigned int i = 0; i < size; ++i)
     {
-        int key, subsize;
+        unsigned int key, subsize;
         stream >> key >> subsize;
         QSet<Kanji *> *set = new QSet<Kanji *>;
-        for(int j = 0; j < subsize; ++j)
+        for(unsigned int j = 0; j < subsize; ++j)
         {
             quintptr p;
             stream >> p;
@@ -190,7 +197,7 @@ QDataStream &operator <<(QDataStream &stream, const KanjiDB &db)
     //and store their pointer value along.
     //other maps stream only the reference.
     stream << db.kanjis.size();
-    QMapIterator<int, Kanji *> i(db.kanjis);
+    QMapIterator<unsigned int, Kanji *> i(db.kanjis);
     while (i.hasNext()) {
         i.next();
         stream << i.key() << *(i.value()) << (quintptr&) i.value();
@@ -214,7 +221,7 @@ QDataStream &operator <<(QDataStream &stream, const KanjiDB &db)
         stream << j.key() << (quintptr&) j.value();
     }
     stream << db.kanjisByStroke.size();
-    QMapIterator<int, QSet<Kanji *> *> k(db.kanjisByStroke);
+    QMapIterator<unsigned int, QSet<Kanji *> *> k(db.kanjisByStroke);
     while (k.hasNext()) {
         k.next();
         stream << k.key() << k.value()->size();
@@ -222,7 +229,7 @@ QDataStream &operator <<(QDataStream &stream, const KanjiDB &db)
             stream << (quintptr&) kj;
     }
     stream << db.kanjisByRadical.size();
-    k = QMapIterator<int, QSet<Kanji *> *>(db.kanjisByRadical);
+    k = QMapIterator<unsigned int, QSet<Kanji *> *>(db.kanjisByRadical);
     while (k.hasNext()) {
         k.next();
         stream << k.key() << k.value()->size();
@@ -230,7 +237,7 @@ QDataStream &operator <<(QDataStream &stream, const KanjiDB &db)
             stream << (quintptr&) kj;
     }
     stream << db.kanjisByGrade.size();
-    k = QMapIterator<int, QSet<Kanji *> *>(db.kanjisByGrade);
+    k = QMapIterator<unsigned int, QSet<Kanji *> *>(db.kanjisByGrade);
     while (k.hasNext()) {
         k.next();
         stream << k.key() << k.value()->size();
@@ -238,7 +245,7 @@ QDataStream &operator <<(QDataStream &stream, const KanjiDB &db)
             stream << (quintptr&) kj;
     }
     stream << db.kanjisByJLPT.size();
-    k = QMapIterator<int, QSet<Kanji *> *>(db.kanjisByJLPT);
+    k = QMapIterator<unsigned int, QSet<Kanji *> *>(db.kanjisByJLPT);
     while (k.hasNext()) {
         k.next();
         stream << k.key() << k.value()->size();
@@ -281,6 +288,20 @@ bool KanjiDB::readIndex(QIODevice *device)
     in >> *this;
 
     return true;
+}
+
+void KanjiDB::initRadicals()
+{
+    for(unsigned int i = 0; i < radicalsSize; ++i)
+    {
+        QString rad = radicals[i];
+        Kanji *radical = new Kanji();
+        radical->setClassicalRadical(i);
+        radical->setLiteral(rad);
+        radical->setUnicode(rad.at(0).unicode());
+        radicalsMap.insert(i+1, radical);
+        radicalsByUcs.insert(radical->getUnicode(), i+1);
+    }
 }
 
 bool KanjiDB::readKanjiDic(QIODevice *device)
@@ -341,6 +362,11 @@ const QString KanjiDB::errorString() const
     return error;
 }
 
+const QMap<unsigned char, Kanji *> &KanjiDB::getRadicalsMap() const
+{
+    return radicalsMap;
+}
+
 void KanjiDB::parseCharacterElement(const QDomElement &element){
     QString title = element.firstChildElement("literal").text();
     Q_ASSERT(title.length() > 0);
@@ -355,7 +381,7 @@ void KanjiDB::parseCharacterElement(const QDomElement &element){
     {
         if(QString::compare(child.attribute("cp_type", ""), "ucs") == 0)
         {
-            int unicode = child.text().toInt(&ok, 16);
+            int unicode = child.text().toUInt(&ok, 16);
             k->setUnicode(unicode);
             Q_ASSERT(unicode > 0);
             kanjis[unicode] = k;
@@ -386,7 +412,7 @@ void KanjiDB::parseCharacterElement(const QDomElement &element){
     {
         if(QString::compare(child.attribute("rad_type", ""), "classical") == 0)
         {
-            int cRad = child.text().toInt(&ok, 10);
+            unsigned char cRad = child.text().toUInt(&ok, 10);
             k->setClassicalRadical(cRad);
             QSet<Kanji *> *set = kanjisByRadical[cRad];
             if(set == 0)
@@ -397,7 +423,7 @@ void KanjiDB::parseCharacterElement(const QDomElement &element){
             set->insert(k);
         }
         else if(QString::compare(child.attribute("rad_type", ""), "nelson_c") == 0)
-            k->setNelsonRadical(child.text().toInt(&ok, 10));
+            k->setNelsonRadical(child.text().toUInt(&ok, 10));
         child = child.nextSiblingElement("rad_value");
     }
 
@@ -407,7 +433,7 @@ void KanjiDB::parseCharacterElement(const QDomElement &element){
     child = misc.firstChildElement("grade");
     if(!child.isNull())
     {
-        int grade = child.text().toInt(&ok, 10);
+        unsigned int grade = child.text().toUInt(&ok, 10);
         k->setGrade(grade);
         QSet<Kanji *> *set = kanjisByGrade[grade];
         if(set == 0)
@@ -422,7 +448,7 @@ void KanjiDB::parseCharacterElement(const QDomElement &element){
     while (!child.isNull())
     {
         if(QString::compare(child.attribute("var_type", ""), "ucs") == 0)
-            k->addUnicodeVariant(child.text().toInt(&ok, 16));
+            k->addUnicodeVariant(child.text().toUInt(&ok, 16));
         else if(QString::compare(child.attribute("var_type", ""), "jis208") == 0)
             k->addJis208Variant(child.text());
         else if(QString::compare(child.attribute("var_type", ""), "jis212") == 0)
@@ -434,7 +460,7 @@ void KanjiDB::parseCharacterElement(const QDomElement &element){
 
     child = misc.firstChildElement("freq");
     if(!child.isNull())
-        k->setFrequency(child.text().toInt(&ok, 10));
+        k->setFrequency(child.text().toUInt(&ok, 10));
 
     child = misc.firstChildElement("rad_name");
     while (!child.isNull())
@@ -446,7 +472,7 @@ void KanjiDB::parseCharacterElement(const QDomElement &element){
     child = misc.firstChildElement("jlpt");
     if(!child.isNull())
     {
-        int jlpt = child.text().toInt(&ok, 10);
+        unsigned int jlpt = child.text().toUInt(&ok, 10);
         k->setJLPT(jlpt);
         QSet<Kanji *> *set = kanjisByJLPT[jlpt];
         if(set == 0)
@@ -457,7 +483,7 @@ void KanjiDB::parseCharacterElement(const QDomElement &element){
         set->insert(k);
     }
 
-    int strokeCount = misc.firstChildElement("stroke_count").text().toInt(&ok, 10);
+    unsigned int strokeCount = misc.firstChildElement("stroke_count").text().toUInt(&ok, 10);
 
     k->setStrokeCount(strokeCount);
     QSet<Kanji *> *set = kanjisByStroke[strokeCount];
@@ -543,7 +569,7 @@ void KanjiDB::search(const QString &s, KanjiSet &set) const
                 {
                     QString ucsValue = parseKey(copy, ucsKey, unite);
                     bool ok;
-                    int ucs = ucsValue.toInt(&ok, 16);
+                    unsigned int ucs = ucsValue.toUInt(&ok, 16);
                     if(ok)
                         searchByUnicode(ucs, set, previousUnite, ucs);
                     else if(!previousUnite)
@@ -560,7 +586,7 @@ void KanjiDB::search(const QString &s, KanjiSet &set) const
                 } else if(copy.startsWith(jlptKey))
                 {
                     bool ok;
-                    int jlpt = parseKey(copy, jlptKey, unite).toInt(&ok, 10);
+                    unsigned int jlpt = parseKey(copy, jlptKey, unite).toUInt(&ok, 10);
                     if(ok)
                         searchByIntIndex(jlpt, kanjisByJLPT, set, previousUnite);
                     else if(!previousUnite)
@@ -568,15 +594,26 @@ void KanjiDB::search(const QString &s, KanjiSet &set) const
                 } else if(copy.startsWith(gradeKey))
                 {
                     bool ok;
-                    int grade = parseKey(copy, gradeKey, unite).toInt(&ok, 10);
+                    unsigned int grade = parseKey(copy, gradeKey, unite).toUInt(&ok, 10);
                     if(ok)
                         searchByIntIndex(grade, kanjisByGrade, set, previousUnite);
+                    else if(!previousUnite)
+                        set.clear();
+                } else if(copy.startsWith(radicalKey))
+                {
+                    bool ok;
+                    QString key = parseKey(copy, radicalKey, unite);
+                    unsigned int radical = key.toUInt(&ok, 10);
+                    if(ok)
+                        searchByIntIndex(radical, kanjisByRadical, set, previousUnite);
+                    else if(key.size() == 1)
+                        searchByIntIndex(radicalsByUcs[key[0].unicode()], kanjisByRadical, set, previousUnite);
                     else if(!previousUnite)
                         set.clear();
                 } else if(copy.startsWith(strokesKey))
                 {
                     bool ok;
-                    int strokes = parseKey(copy, strokesKey, unite).toInt(&ok, 10);
+                    unsigned int strokes = parseKey(copy, strokesKey, unite).toUInt(&ok, 10);
                     if(ok)
                         searchByIntIndex(strokes, kanjisByStroke, set, previousUnite);
                     else if(!previousUnite)
@@ -584,11 +621,11 @@ void KanjiDB::search(const QString &s, KanjiSet &set) const
                 } else if(copy.startsWith(strokesLessKey))
                 {
                     bool ok;
-                    int strokes = parseKey(copy, strokesLessKey, unite).toInt(&ok, 10);
+                    unsigned int strokes = parseKey(copy, strokesLessKey, unite).toUInt(&ok, 10);
                     if(ok)
                     {
                         KanjiSet tmpSet;
-                        for(int i = minStrokes; i < strokes; ++i)
+                        for(unsigned int i = minStrokes; i < strokes; ++i)
                             searchByIntIndex(i, kanjisByStroke, tmpSet, true);
                         foreach(Kanji *k, tmpSet)
                             if(previousUnite)
@@ -601,11 +638,11 @@ void KanjiDB::search(const QString &s, KanjiSet &set) const
                 } else if(copy.startsWith(strokesMoreKey))
                 {
                     bool ok;
-                    int strokes = parseKey(copy, strokesMoreKey, unite).toInt(&ok, 10);
+                    unsigned int strokes = parseKey(copy, strokesMoreKey, unite).toUInt(&ok, 10);
                     if(ok)
                     {
                         KanjiSet tmpSet;
-                        for(int i = maxStrokes; i > strokes ; --i)
+                        for(unsigned int i = maxStrokes; i > strokes ; --i)
                             searchByIntIndex(i, kanjisByStroke, tmpSet, true);
                         foreach(Kanji *k, tmpSet)
                             if(previousUnite)
@@ -648,7 +685,7 @@ QString KanjiDB::parseKey(QString &parsedString, const QString &key, bool &unite
     return result;
 }
 
-void KanjiDB::searchByIntIndex(int index, const QMap<int, QSet<Kanji *> *> &searchedMap, KanjiSet &setToFill, bool unite) const
+void KanjiDB::searchByIntIndex(unsigned int index, const QMap<unsigned int, QSet<Kanji *> *> &searchedMap, KanjiSet &setToFill, bool unite) const
 {
     if(index > 0 && searchedMap.contains(index))
     {
@@ -687,7 +724,7 @@ void KanjiDB::searchByStringIndex(const QString &indexString, const QMap<QString
         setToFill.clear();
 }
 
-void KanjiDB::searchByUnicode(int unicode, KanjiSet &set, bool unite, int position) const
+void KanjiDB::searchByUnicode(unsigned int unicode, KanjiSet &set, bool unite, int position) const
 {
     if(unicode > 0 && kanjis.contains(unicode))
     {
@@ -708,7 +745,7 @@ void KanjiDB::searchByUnicode(int unicode, KanjiSet &set, bool unite, int positi
 
 void KanjiDB::findVariants(const Kanji *k, KanjiSet &variants) const
 {
-    foreach(int i, k->getUnicodeVariants())
+    foreach(unsigned int i, k->getUnicodeVariants())
         searchByUnicode(i, variants, true, i);
     foreach(QString s, k->getJis208Variants())
         searchByStringIndex(s, kanjisJIS208, variants, true);
