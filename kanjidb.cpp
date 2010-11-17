@@ -724,6 +724,11 @@ void KanjiDB::searchByStringIndex(const QString &indexString, const QMap<QString
         setToFill.clear();
 }
 
+const Kanji *KanjiDB::getByUnicode(unsigned int unicode) const
+{
+    return kanjis[unicode];
+}
+
 void KanjiDB::searchByUnicode(unsigned int unicode, KanjiSet &set, bool unite, int position) const
 {
     if(unicode > 0 && kanjis.contains(unicode))

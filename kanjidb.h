@@ -19,6 +19,7 @@ public:
 
     void clear();
 
+    const Kanji *getByUnicode(unsigned int) const;
     void searchByUnicode(unsigned int, KanjiSet &, bool, int) const;
     void searchByIntIndex(unsigned int, const QMap<unsigned int, QSet<Kanji *> *> &, KanjiSet &, bool) const;
     void searchByStringIndex(const QString &, const QMap<QString, Kanji *> &, KanjiSet &, bool) const;
