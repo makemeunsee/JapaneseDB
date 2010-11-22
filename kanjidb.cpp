@@ -3,7 +3,17 @@
 #include <QTextStream>
 #include "readingmeaninggroup.h"
 #include <QRegExp>
+#include <QTextCodec>
 #include "radicals.h"
+
+#include <iostream>
+using namespace std;
+
+const QString KanjiDB::kanjiDBIndexFilename("kanjidb.index");
+const QString KanjiDB::defaultKanjiDic2Filename("kanjidic2.xml");
+const QString KanjiDB::defaultKRadFilename("kradfile");
+const QString KanjiDB::defaultKRad2Filename("kradfile2");
+const QString KanjiDB::defaultRadKXFilename("radkfilex");
 
 const quint32 KanjiDB::magic = 0x5AD5AD15;
 const quint32 KanjiDB::version = 100;
@@ -257,6 +267,140 @@ QDataStream &operator <<(QDataStream &stream, const KanjiDB &db)
     return stream;
 }
 
+void KanjiDB::initRadicals()
+{
+    for(unsigned int i = 0; i < radicalsSize; ++i)
+    {
+        QString rad = radicals[i];
+        Kanji *radical = new Kanji();
+        radical->setClassicalRadical(i);
+        radical->setLiteral(rad);
+        radical->setUnicode(rad.at(0).unicode());
+        radicalsMap.insert(i+1, radical);
+        radicalsByUcs.insert(radical->getUnicode(), i+1);
+    }
+}
+
+
+int KanjiDB::readResources(const QDir &basedir)
+{
+    error = QString();
+    bool b_allDataRead, b_baseDataRead, b_indexSaved;
+    b_allDataRead = b_baseDataRead = b_indexSaved = false;
+
+    QFile index(basedir.absolutePath().append("/").append(kanjiDBIndexFilename));
+    if (index.open(QIODevice::ReadOnly)) {
+        if(readIndex(&index))
+        {
+            b_allDataRead = b_baseDataRead = b_indexSaved = true;
+        } else
+        {
+            //TODO log: index unreadable
+        }
+        index.close();
+    } else
+    {
+        //TODO log: no index found
+    }
+
+    if(!b_allDataRead)
+    {
+        QFile kanjiDicFile(basedir.absolutePath().append("/").append(defaultKanjiDic2Filename));
+        if (!kanjiDicFile.open(QIODevice::Text | QIODevice::ReadOnly)) {
+            error = QString("Cannot open kanjidic file %1.")
+                              .arg(defaultKanjiDic2Filename);
+            return noDataRead;
+        }
+
+        if (readKanjiDic(&kanjiDicFile))
+        {
+            b_allDataRead = b_baseDataRead = true;
+        }
+        else
+            error = QString("Cannot read kanjidic file %1:\n%2.")
+                              .arg(defaultKanjiDic2Filename)
+                              .arg(error);
+        kanjiDicFile.close();
+
+        if(b_allDataRead)
+        {
+            QFile radKXFile(basedir.absolutePath().append("/").append(defaultRadKXFilename));
+            if (!radKXFile.open(QIODevice::Text | QIODevice::ReadOnly)) {
+                error = QString("Cannot open RADKFILEX file %1.")
+                                  .arg(defaultRadKXFilename);
+                b_allDataRead = false;
+            } else {
+                if (!readRadK(&radKXFile))
+                {
+                    error = QString("Cannot read RADKFILEX file %1:\n%2.")
+                                      .arg(defaultRadKXFilename)
+                                      .arg(error);
+                    b_allDataRead = false;
+                }
+                radKXFile.close();
+            }
+
+            QFile kRadFile(basedir.absolutePath().append("/").append(defaultKRadFilename));
+            if (!kRadFile.open(QIODevice::Text | QIODevice::ReadOnly)) {
+                error = QString("Cannot open KRADFILE file %1.")
+                                  .arg(defaultKRadFilename);
+                b_allDataRead = false;
+            } else {
+                if (!readKRad(&kRadFile))
+                {
+                    error = QString("Cannot read KRADFILE file %1:\n%2.")
+                                      .arg(defaultKRadFilename)
+                                      .arg(error);
+                    b_allDataRead = false;
+                }
+                kRadFile.close();
+            }
+
+            QFile kRad2File(basedir.absolutePath().append("/").append(defaultKRad2Filename));
+            if (!kRad2File.open(QIODevice::Text | QIODevice::ReadOnly)) {
+                error = QString("Cannot open KRAD2FILE file %1.")
+                                  .arg(defaultKRad2Filename);
+                b_allDataRead = false;
+            } else {
+                if (!readKRad(&kRad2File))
+                {
+                    error = QString("Cannot read KRAD2FILE file %1:\n%2.")
+                                      .arg(defaultKRad2Filename)
+                                      .arg(error);
+                    b_allDataRead = false;
+                }
+                kRad2File.close();
+            }
+        }
+
+        //only save index when all resources have been freshly read
+        if(b_allDataRead)
+        {
+            if(!index.open(QIODevice::WriteOnly))
+                error = QString("Cannot open index file %1 for writing.")
+                                  .arg(kanjiDBIndexFilename);
+            else
+            {
+                if(writeIndex(&index))
+                    b_indexSaved = true;
+                else
+                    error = QString("Cannot write index file %1.")
+                                      .arg(kanjiDBIndexFilename);
+                index.close();
+            }
+        }
+    }
+
+    if(b_indexSaved)
+        return allDataReadAndSaved;
+    else if(b_allDataRead)
+        return allDataReadButNotSaved;
+    else if(b_baseDataRead)
+        return baseDataRead;
+    else
+        return noDataRead;
+}
+
 bool KanjiDB::readIndex(QIODevice *device)
 {
     QDataStream in(device);
@@ -290,18 +434,41 @@ bool KanjiDB::readIndex(QIODevice *device)
     return true;
 }
 
-void KanjiDB::initRadicals()
+bool KanjiDB::readKRad(QIODevice *device)
 {
-    for(unsigned int i = 0; i < radicalsSize; ++i)
+    //TODO
+    if(false)
     {
-        QString rad = radicals[i];
-        Kanji *radical = new Kanji();
-        radical->setClassicalRadical(i);
-        radical->setLiteral(rad);
-        radical->setUnicode(rad.at(0).unicode());
-        radicalsMap.insert(i+1, radical);
-        radicalsByUcs.insert(radical->getUnicode(), i+1);
+        error = QString("Error in KRAD reading");
+        return false;
     }
+    return true;
+}
+
+bool KanjiDB::readRadK(QIODevice *device)
+{
+    QTextCodec *codec = QTextCodec::codecForName("EUC-JP");
+    QTextStream ts(device);
+    ts.setAutoDetectUnicode(false);
+    ts.setCodec(codec);
+    QString s;
+    QString cat("");
+    while(!(s = ts.readLine()).isNull())
+    {
+        if(s.startsWith("$"))
+        {
+            cat.append(s.at(2));
+            cat.append(" ");
+        }
+    }
+
+    //TODO
+    if(false)
+    {
+        error = QString("Error in RADK reading");
+        return false;
+    }
+    return true;
 }
 
 bool KanjiDB::readKanjiDic(QIODevice *device)

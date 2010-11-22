@@ -5,7 +5,7 @@
 #include <QSet>
 #include <QString>
 #include <QStringList>
-#include <QFile>
+#include <QDir>
 #include <QDataStream>
 #include "kanji.h"
 
@@ -31,10 +31,19 @@ public:
     friend QDataStream &operator <<(QDataStream &stream, const KanjiDB &);
     friend QDataStream &operator >>(QDataStream &stream, KanjiDB &);
     void initRadicals();
+    int readResources(const QDir &);
     bool readIndex(QIODevice *);
     bool readKanjiDic(QIODevice *);
+    bool readRadK(QIODevice *);
+    bool readKRad(QIODevice *);
     bool writeIndex(QIODevice *) const;
     const QString errorString() const;
+
+    static const QString kanjiDBIndexFilename;
+    static const QString defaultKanjiDic2Filename;
+    static const QString defaultKRadFilename;
+    static const QString defaultKRad2Filename;
+    static const QString defaultRadKXFilename;
 
     static const quint32 magic;
     static const quint32 version;
@@ -57,6 +66,11 @@ public:
     static const QString allKeys[keyCount];
     static const QString regexp;
     static const QRegExp searchRegexp;
+
+    static const int allDataReadAndSaved = 0;
+    static const int noDataRead = 1;
+    static const int baseDataRead = 2;
+    static const int allDataReadButNotSaved = 3;
 
     static inline QStringList fromArray(const QString *list, unsigned int size){
         QStringList l;
