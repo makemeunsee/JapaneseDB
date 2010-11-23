@@ -19,24 +19,29 @@ public:
 
     void clear();
 
-    const Kanji *getByUnicode(unsigned int) const;
-    void searchByUnicode(unsigned int, KanjiSet &, bool, int) const;
+    const Kanji *getByUnicode(Unicode) const;
+    void searchByUnicode(Unicode, KanjiSet &, bool, int) const;
     void searchByIntIndex(unsigned int, const QMap<unsigned int, QSet<Kanji *> *> &, KanjiSet &, bool) const;
     void searchByStringIndex(const QString &, const QMap<QString, Kanji *> &, KanjiSet &, bool) const;
     void search(const QString &, KanjiSet &) const;
-    const QMap<unsigned char, Kanji *> &getRadicalsMap() const;
-    QString parseKey(QString &parsedString, const QString &key, bool &unite) const;
     void findVariants(const Kanji *k, KanjiSet &setToFill) const;
+
+    const KanjiSet &getAllKanjis() const;
+    const KanjiSet &getAllRadicals() const;
+    const KanjiSet &getAllComponents() const;
+
+    const Kanji *getRadicalVariant(Unicode) const;
+    const Kanji *getRadicalById(unsigned char) const;
 
     friend QDataStream &operator <<(QDataStream &stream, const KanjiDB &);
     friend QDataStream &operator >>(QDataStream &stream, KanjiDB &);
-    void initRadicals();
     int readResources(const QDir &);
     bool readIndex(QIODevice *);
     bool readKanjiDic(QIODevice *);
     bool readRadK(QIODevice *);
     bool readKRad(QIODevice *);
     bool writeIndex(QIODevice *) const;
+
     const QString errorString() const;
 
     static const QString kanjiDBIndexFilename;
@@ -80,11 +85,11 @@ public:
     }
 
 private:
+    void initRadicals();
     void parseCharacterElement(const QDomElement &);
+    QString parseKey(QString &parsedString, const QString &key, bool &unite) const;
 
-    QMap<unsigned char, Kanji *> radicalsMap;
-    QMap<unsigned int, unsigned char> radicalsByUcs;
-    QMap<unsigned int, Kanji *> kanjis;
+    KanjiSet kanjis;
     QMap<QString, Kanji *> kanjisJIS208;
     QMap<QString, Kanji *> kanjisJIS212;
     QMap<QString, Kanji *> kanjisJIS213;
@@ -92,6 +97,17 @@ private:
     QMap<unsigned int, QSet<Kanji *> *> kanjisByRadical;
     QMap<unsigned int, QSet<Kanji *> *> kanjisByGrade;
     QMap<unsigned int, QSet<Kanji *> *> kanjisByJLPT;
+
+    //classical radicals
+    QMap<unsigned char, Unicode> radicalsByIndex;
+    KanjiSet radicals;
+
+    //radk components
+    QMap<unsigned char, Unicode> componentIndexes;
+    KanjiSet components;
+
+    QMap<Unicode, QSet<Kanji *> *> kanjisByComponent;
+
     unsigned int minStrokes, maxStrokes;
 
     mutable QString error;

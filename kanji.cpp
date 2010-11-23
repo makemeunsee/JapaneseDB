@@ -86,12 +86,12 @@ void Kanji::setLiteral(const QString &s)
     literal = s;
 }
 
-unsigned int Kanji::getUnicode() const
+Unicode Kanji::getUnicode() const
 {
     return unicode;
 }
 
-void Kanji::setUnicode(unsigned int u)
+void Kanji::setUnicode(Unicode u)
 {
     unicode = u;
 }
@@ -166,7 +166,7 @@ void Kanji::setStrokeCount(unsigned char count)
     strokeCount = count;
 }
 
-const QSet<unsigned int> & Kanji::getUnicodeVariants() const
+const QSet<Unicode> & Kanji::getUnicodeVariants() const
 {
     return unicodeVariants;
 }
@@ -186,7 +186,7 @@ const QSet<QString> & Kanji::getJis213Variants() const
     return jis213Variants;
 }
 
-void Kanji::addUnicodeVariant(unsigned int ucs)
+void Kanji::addUnicodeVariant(Unicode ucs)
 {
     unicodeVariants.insert(ucs);
 }
