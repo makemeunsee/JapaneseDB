@@ -8,7 +8,8 @@ TEMPLATE = lib
 CONFIG += staticlib
 SOURCES += kanji.cpp \
     kanjidb.cpp \
-    readingmeaninggroup.cpp
+    readingmeaninggroup.cpp \
+    radicals.cpp
 HEADERS += kanji.h \
     kanjidb.h \
     readingmeaninggroup.h \

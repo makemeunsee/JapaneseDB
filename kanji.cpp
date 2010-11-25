@@ -22,6 +22,7 @@ QDataStream &operator >>(QDataStream &stream, Kanji &k)
     k.jis213Variants.clear();
     k.radicalNames.clear();
     k.nanoriReadings.clear();
+    k.components.clear();
 
     stream >> k.literal;
     stream >> k.unicode;
@@ -29,6 +30,7 @@ QDataStream &operator >>(QDataStream &stream, Kanji &k)
     stream >> k.jis212;
     stream >> k.jis213;
     stream >> (quint8&) k.classicalRadical;
+    stream >> k.components;
     stream >> (quint8&) k.nelsonRadical;
     stream >> (quint8&) k.grade;
     stream >> (quint8&) k.strokeCount;
@@ -59,6 +61,7 @@ QDataStream &operator <<(QDataStream &stream, const Kanji &k)
     stream << k.jis212;
     stream << k.jis213;
     stream << (quint8&) k.classicalRadical;
+    stream << k.components;
     stream << (quint8&) k.nelsonRadical;
     stream << (quint8&) k.grade;
     stream << (quint8&) k.strokeCount;
@@ -86,12 +89,12 @@ void Kanji::setLiteral(const QString &s)
     literal = s;
 }
 
-unsigned int Kanji::getUnicode() const
+Unicode Kanji::getUnicode() const
 {
     return unicode;
 }
 
-void Kanji::setUnicode(unsigned int u)
+void Kanji::setUnicode(Unicode u)
 {
     unicode = u;
 }
@@ -166,7 +169,7 @@ void Kanji::setStrokeCount(unsigned char count)
     strokeCount = count;
 }
 
-const QSet<unsigned int> & Kanji::getUnicodeVariants() const
+const QSet<Unicode> & Kanji::getUnicodeVariants() const
 {
     return unicodeVariants;
 }
@@ -186,7 +189,7 @@ const QSet<QString> & Kanji::getJis213Variants() const
     return jis213Variants;
 }
 
-void Kanji::addUnicodeVariant(unsigned int ucs)
+void Kanji::addUnicodeVariant(Unicode ucs)
 {
     unicodeVariants.insert(ucs);
 }
@@ -255,4 +258,14 @@ const QSet<QString> & Kanji::getNanoriReadings() const
 void Kanji::addNanoriReading(const QString &nanoriReading)
 {
     nanoriReadings.insert(nanoriReading);
+}
+
+void Kanji::addComponent(Unicode u)
+{
+    components.insert(u);
+}
+
+const QSet<Unicode> &Kanji::getComponents() const
+{
+    return components;
 }

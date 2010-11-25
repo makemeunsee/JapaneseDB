@@ -3,10 +3,17 @@
 #include <QTextStream>
 #include "readingmeaninggroup.h"
 #include <QRegExp>
+#include <QTextCodec>
 #include "radicals.h"
 
+const QString KanjiDB::kanjiDBIndexFilename("kanjidb.index");
+const QString KanjiDB::defaultKanjiDic2Filename("kanjidic2.xml");
+const QString KanjiDB::defaultKRadFilename("kradfile");
+const QString KanjiDB::defaultKRad2Filename("kradfile2");
+const QString KanjiDB::defaultRadKXFilename("radkfilexUTF8");
+
 const quint32 KanjiDB::magic = 0x5AD5AD15;
-const quint32 KanjiDB::version = 100;
+const quint32 KanjiDB::version = 151;
 
 const QString KanjiDB::interSeps("&\\+");
 const QString KanjiDB::unionSeps(" ,;");
@@ -37,9 +44,10 @@ KanjiDB::KanjiDB()
 KanjiDB::~KanjiDB()
 {
     clear();
-    foreach(Kanji *k, radicalsMap.values())
+    foreach(Kanji *k, radicals.values())
         delete k;
-    radicalsMap.clear();
+    radicals.clear();
+    radicalsByIndex.clear();
 }
 
 void KanjiDB::clear()
@@ -52,6 +60,7 @@ void KanjiDB::clear()
     kanjisJIS208.clear();
     kanjisJIS212.clear();
     kanjisJIS213.clear();
+
     foreach(QSet<Kanji *> *set, kanjisByStroke)
     {
         set->clear();
@@ -76,6 +85,16 @@ void KanjiDB::clear()
         delete set;
     }
     kanjisByRadical.clear();
+    foreach(Kanji *k, components.values())
+        delete k;
+    components.clear();
+    componentIndexes.clear();
+    foreach(QSet<Kanji *> *set, kanjisByComponent)
+    {
+        set->clear();
+        delete set;
+    }
+    kanjisByComponent.clear();
 }
 
 QDataStream &operator >>(QDataStream &stream, KanjiDB &db)
@@ -94,7 +113,7 @@ QDataStream &operator >>(QDataStream &stream, KanjiDB &db)
     stream >> size;
     for(unsigned int i = 0; i < size; ++i)
     {
-        unsigned int ucs;
+        Unicode ucs;
         Kanji *k = new Kanji;
         quintptr p;
         stream >> ucs >> *k >> p;
@@ -110,7 +129,7 @@ QDataStream &operator >>(QDataStream &stream, KanjiDB &db)
         quintptr p;
         stream >> jis208 >> p;
         //build other map getting new reference from old reference
-        db.kanjisJIS208.insert(jis208, memMap[p]);
+        db.kanjisJIS208.insert(jis208, memMap.value(p));
     }
     stream >> size;
     for(unsigned int i = 0; i < size; ++i)
@@ -118,7 +137,7 @@ QDataStream &operator >>(QDataStream &stream, KanjiDB &db)
         QString jis212;
         quintptr p;
         stream >> jis212 >> p;
-        db.kanjisJIS212.insert(jis212, memMap[p]);
+        db.kanjisJIS212.insert(jis212, memMap.value(p));
     }
     stream >> size;
     for(unsigned int i = 0; i < size; ++i)
@@ -126,7 +145,7 @@ QDataStream &operator >>(QDataStream &stream, KanjiDB &db)
         QString jis213;
         quintptr p;
         stream >> jis213 >> p;
-        db.kanjisJIS213.insert(jis213, memMap[p]);
+        db.kanjisJIS213.insert(jis213, memMap.value(p));
     }
     stream >> size;
     for(unsigned int i = 0; i < size; ++i)
@@ -138,7 +157,7 @@ QDataStream &operator >>(QDataStream &stream, KanjiDB &db)
         {
             quintptr p;
             stream >> p;
-            set->insert(memMap[p]);
+            set->insert(memMap.value(p));
         }
         db.kanjisByStroke.insert(key, set);
     }
@@ -152,7 +171,7 @@ QDataStream &operator >>(QDataStream &stream, KanjiDB &db)
         {
             quintptr p;
             stream >> p;
-            set->insert(memMap[p]);
+            set->insert(memMap.value(p));
         }
         db.kanjisByRadical.insert(key, set);
     }
@@ -166,7 +185,7 @@ QDataStream &operator >>(QDataStream &stream, KanjiDB &db)
         {
             quintptr p;
             stream >> p;
-            set->insert(memMap[p]);
+            set->insert(memMap.value(p));
         }
         db.kanjisByGrade.insert(key, set);
     }
@@ -180,9 +199,40 @@ QDataStream &operator >>(QDataStream &stream, KanjiDB &db)
         {
             quintptr p;
             stream >> p;
-            set->insert(memMap[p]);
+            set->insert(memMap.value(p));
         }
         db.kanjisByJLPT.insert(key, set);
+    }
+    stream >> size;
+    for(unsigned int i = 0; i < size; ++i)
+    {
+        unsigned int key, subsize;
+        stream >> key >> subsize;
+        QSet<Kanji *> *set = new QSet<Kanji *>;
+        for(unsigned int j = 0; j < subsize; ++j)
+        {
+            quintptr p;
+            stream >> p;
+            set->insert(memMap.value(p));
+        }
+        db.kanjisByComponent.insert(key, set);
+    }
+    stream >> size;
+    for(unsigned int i = 0; i < size; ++i)
+    {
+        Unicode ucs;
+        Kanji *k = new Kanji;
+        stream >> ucs >> *k;
+        db.components.insert(ucs, k);
+    }
+    stream >> size;
+    for(unsigned int i = 0; i < size; ++i)
+    {
+        unsigned char componentIndex;
+        Unicode ucs;
+        stream >> (quint8&) componentIndex >> ucs;
+        //build other map getting new reference from old reference
+        db.componentIndexes.insert(componentIndex, ucs);
     }
     stream >> (quint32&) db.minStrokes;
     stream >> (quint32&) db.maxStrokes;
@@ -197,7 +247,7 @@ QDataStream &operator <<(QDataStream &stream, const KanjiDB &db)
     //and store their pointer value along.
     //other maps stream only the reference.
     stream << db.kanjis.size();
-    QMapIterator<unsigned int, Kanji *> i(db.kanjis);
+    KanjiSetConstIterator i(db.kanjis);
     while (i.hasNext()) {
         i.next();
         stream << i.key() << *(i.value()) << (quintptr&) i.value();
@@ -252,9 +302,178 @@ QDataStream &operator <<(QDataStream &stream, const KanjiDB &db)
         foreach(Kanji *kj, *(k.value()))
             stream << (quintptr&) kj;
     }
+    stream << db.kanjisByComponent.size();
+    k = QMapIterator<Unicode, QSet<Kanji *> *>(db.kanjisByComponent);
+    while (k.hasNext()) {
+        k.next();
+        stream << k.key() << k.value()->size();
+        foreach(Kanji *kj, *(k.value()))
+            stream << (quintptr&) kj;
+    }
+    stream << db.components.size();
+    i = KanjiSetConstIterator(db.components);
+    while (i.hasNext()) {
+        i.next();
+        stream << i.key() << *(i.value());
+    }
+    stream << db.componentIndexes.size();
+    QMapIterator<unsigned char, Unicode> l(db.componentIndexes);
+    while (l.hasNext()) {
+        l.next();
+        stream << l.key() << l.value();
+    }
     stream << db.minStrokes;
     stream << db.maxStrokes;
     return stream;
+}
+
+void KanjiDB::initRadicals()
+{
+    bool b;
+    for(unsigned int i = 0; i < Radicals::radicalsSize; ++i)
+    {
+        QStringList parts = Radicals::radicals[i].split(":");
+        unsigned char strokes = parts[1].toUShort(&b);
+
+        Kanji *masterRadical = new Kanji();
+        masterRadical->setClassicalRadical(i+1);
+        masterRadical->setLiteral(parts[0].at(0));
+        masterRadical->setUnicode(parts[0].at(0).unicode());
+        masterRadical->setStrokeCount(strokes);
+
+        radicalsByIndex.insert(i+1, masterRadical->getUnicode());
+        radicals.insert(masterRadical->getUnicode(), masterRadical);
+
+        foreach(QChar c, parts[0].mid(1))
+        {
+            Kanji *variantRadical = new Kanji();
+            variantRadical->setClassicalRadical(i+1);
+            variantRadical->setLiteral(c);
+            variantRadical->setUnicode(c.unicode());
+            variantRadical->setStrokeCount(strokes);
+            radicals.insert(c.unicode(), variantRadical);
+            masterRadical->addUnicodeVariant(c.unicode());
+        }
+    }
+}
+
+int KanjiDB::readResources(const QDir &basedir)
+{
+    error = QString();
+    bool b_allDataRead, b_baseDataRead, b_indexSaved;
+    b_allDataRead = b_baseDataRead = b_indexSaved = false;
+
+    QFile index(basedir.absolutePath().append("/").append(kanjiDBIndexFilename));
+    if (index.open(QIODevice::ReadOnly)) {
+        if(readIndex(&index))
+        {
+            b_allDataRead = b_baseDataRead = b_indexSaved = true;
+        } else
+        {
+            //TODO log: index unreadable
+        }
+        index.close();
+    } else
+    {
+        //TODO log: no index found
+    }
+
+    if(!b_allDataRead)
+    {
+        QFile kanjiDicFile(basedir.absolutePath().append("/").append(defaultKanjiDic2Filename));
+        if (!kanjiDicFile.open(QIODevice::Text | QIODevice::ReadOnly)) {
+            error = QString("Cannot open kanjidic file %1.")
+                              .arg(defaultKanjiDic2Filename);
+            return noDataRead;
+        }
+
+        if (readKanjiDic(&kanjiDicFile))
+        {
+            b_allDataRead = b_baseDataRead = true;
+        }
+        else
+            error = QString("Cannot read kanjidic file %1:\n%2.")
+                              .arg(defaultKanjiDic2Filename)
+                              .arg(error);
+        kanjiDicFile.close();
+
+        if(b_allDataRead)
+        {
+            QFile radKXFile(basedir.absolutePath().append("/").append(defaultRadKXFilename));
+            if (!radKXFile.open(QIODevice::Text | QIODevice::ReadOnly)) {
+                error = QString("Cannot open RADKFILEX file %1.")
+                                  .arg(defaultRadKXFilename);
+                b_allDataRead = false;
+            } else {
+                if (!readRadK(&radKXFile))
+                {
+                    error = QString("Cannot read RADKFILEX file %1:\n%2.")
+                                      .arg(defaultRadKXFilename)
+                                      .arg(error);
+                    b_allDataRead = false;
+                }
+                radKXFile.close();
+            }
+
+            QFile kRadFile(basedir.absolutePath().append("/").append(defaultKRadFilename));
+            if (!kRadFile.open(QIODevice::Text | QIODevice::ReadOnly)) {
+                error = QString("Cannot open KRADFILE file %1.")
+                                  .arg(defaultKRadFilename);
+                b_allDataRead = false;
+            } else {
+                if (!readKRad(&kRadFile))
+                {
+                    error = QString("Cannot read KRADFILE file %1:\n%2.")
+                                      .arg(defaultKRadFilename)
+                                      .arg(error);
+                    b_allDataRead = false;
+                }
+                kRadFile.close();
+            }
+
+            QFile kRad2File(basedir.absolutePath().append("/").append(defaultKRad2Filename));
+            if (!kRad2File.open(QIODevice::Text | QIODevice::ReadOnly)) {
+                error = QString("Cannot open KRAD2FILE file %1.")
+                                  .arg(defaultKRad2Filename);
+                b_allDataRead = false;
+            } else {
+                if (!readKRad(&kRad2File))
+                {
+                    error = QString("Cannot read KRAD2FILE file %1:\n%2.")
+                                      .arg(defaultKRad2Filename)
+                                      .arg(error);
+                    b_allDataRead = false;
+                }
+                kRad2File.close();
+            }
+        }
+
+        //only save index when all resources have been freshly read
+        if(b_allDataRead)
+        {
+            if(!index.open(QIODevice::WriteOnly))
+                error = QString("Cannot open index file %1 for writing.")
+                                  .arg(kanjiDBIndexFilename);
+            else
+            {
+                if(writeIndex(&index))
+                    b_indexSaved = true;
+                else
+                    error = QString("Cannot write index file %1.")
+                                      .arg(kanjiDBIndexFilename);
+                index.close();
+            }
+        }
+    }
+
+    if(b_indexSaved)
+        return allDataReadAndSaved;
+    else if(b_allDataRead)
+        return allDataReadButNotSaved;
+    else if(b_baseDataRead)
+        return baseDataRead;
+    else
+        return noDataRead;
 }
 
 bool KanjiDB::readIndex(QIODevice *device)
@@ -271,10 +490,13 @@ bool KanjiDB::readIndex(QIODevice *device)
     }
 
     // Read the version
-    qint32 _version;
+    quint32 _version;
     in >> _version;
-//    if (_version < 100)
-//        return XXX_BAD_FILE_TOO_OLD;
+    if (_version < version)
+    {
+        error = QString("Unsupported index file, too old");
+        return false;
+    }
 //    if (version > 123)
 //        return XXX_BAD_FILE_TOO_NEW;
 
@@ -290,18 +512,67 @@ bool KanjiDB::readIndex(QIODevice *device)
     return true;
 }
 
-void KanjiDB::initRadicals()
+bool KanjiDB::readKRad(QIODevice *device)
 {
-    for(unsigned int i = 0; i < radicalsSize; ++i)
+    //TODO
+    if(false)
     {
-        QString rad = radicals[i];
-        Kanji *radical = new Kanji();
-        radical->setClassicalRadical(i);
-        radical->setLiteral(rad);
-        radical->setUnicode(rad.at(0).unicode());
-        radicalsMap.insert(i+1, radical);
-        radicalsByUcs.insert(radical->getUnicode(), i+1);
+        error = QString("Error in KRAD reading");
+        return false;
     }
+    return true;
+}
+
+bool KanjiDB::readRadK(QIODevice *device)
+{
+    QTextCodec *codec = QTextCodec::codecForName("UTF-8");
+    QTextStream ts(device);
+    ts.setAutoDetectUnicode(false);
+    ts.setCodec(codec);
+    QString line;
+    unsigned char index = 0;
+    bool ok;
+    Unicode currentRadical = 0;
+    while(!(line = ts.readLine()).isNull())
+    {
+        if(!line.startsWith("#") && !line.size() == 0)
+        {
+            if(line.startsWith("$"))
+            {
+                const QChar &c_component = line.at(2);
+                unsigned char strokes = QString(line.at(4)).toUShort(&ok);
+                unsigned short unicode = c_component.unicode();
+                Kanji *k_component =  new Kanji;
+                k_component->setUnicode(unicode);
+                k_component->setLiteral(QString(c_component));
+                k_component->setStrokeCount(strokes);
+                if(line.count(" ") == 3)
+                    k_component->setLiteral(line.mid(line.lastIndexOf(" ")+1));
+                components.insert(unicode, k_component);
+                componentIndexes.insert(index++, unicode);
+                currentRadical = unicode;
+                kanjisByComponent.insert(currentRadical, new QSet<Kanji *>);
+            } else
+            {
+                if(currentRadical == 0)
+                {
+                    error = QString("Unrecognized radk file");
+                    return false;
+                }
+                foreach(QChar c, line)
+                {
+                    Unicode u = c.unicode();
+                    if(kanjis.contains(u))
+                    {
+                        Kanji *container = kanjis.value(u);
+                        kanjisByComponent.value(currentRadical)->insert(container);
+                        container->addComponent(currentRadical);
+                    }
+                }
+            }
+        }
+    }
+    return true;
 }
 
 bool KanjiDB::readKanjiDic(QIODevice *device)
@@ -362,11 +633,6 @@ const QString KanjiDB::errorString() const
     return error;
 }
 
-const QMap<unsigned char, Kanji *> &KanjiDB::getRadicalsMap() const
-{
-    return radicalsMap;
-}
-
 void KanjiDB::parseCharacterElement(const QDomElement &element){
     QString title = element.firstChildElement("literal").text();
     Q_ASSERT(title.length() > 0);
@@ -414,7 +680,7 @@ void KanjiDB::parseCharacterElement(const QDomElement &element){
         {
             unsigned char cRad = child.text().toUInt(&ok, 10);
             k->setClassicalRadical(cRad);
-            QSet<Kanji *> *set = kanjisByRadical[cRad];
+            QSet<Kanji *> *set = kanjisByRadical.value(cRad);
             if(set == 0)
             {
                 set = new QSet<Kanji *>();
@@ -435,7 +701,7 @@ void KanjiDB::parseCharacterElement(const QDomElement &element){
     {
         unsigned int grade = child.text().toUInt(&ok, 10);
         k->setGrade(grade);
-        QSet<Kanji *> *set = kanjisByGrade[grade];
+        QSet<Kanji *> *set = kanjisByGrade.value(grade);
         if(set == 0)
         {
             set = new QSet<Kanji *>();
@@ -474,7 +740,7 @@ void KanjiDB::parseCharacterElement(const QDomElement &element){
     {
         unsigned int jlpt = child.text().toUInt(&ok, 10);
         k->setJLPT(jlpt);
-        QSet<Kanji *> *set = kanjisByJLPT[jlpt];
+        QSet<Kanji *> *set = kanjisByJLPT.value(jlpt);
         if(set == 0)
         {
             set = new QSet<Kanji *>();
@@ -486,7 +752,7 @@ void KanjiDB::parseCharacterElement(const QDomElement &element){
     unsigned int strokeCount = misc.firstChildElement("stroke_count").text().toUInt(&ok, 10);
 
     k->setStrokeCount(strokeCount);
-    QSet<Kanji *> *set = kanjisByStroke[strokeCount];
+    QSet<Kanji *> *set = kanjisByStroke.value(strokeCount);
     if(set == 0)
     {
         set = new QSet<Kanji *>();
@@ -569,7 +835,7 @@ void KanjiDB::search(const QString &s, KanjiSet &set) const
                 {
                     QString ucsValue = parseKey(copy, ucsKey, unite);
                     bool ok;
-                    unsigned int ucs = ucsValue.toUInt(&ok, 16);
+                    Unicode ucs = ucsValue.toUInt(&ok, 16);
                     if(ok)
                         searchByUnicode(ucs, set, previousUnite, ucs);
                     else if(!previousUnite)
@@ -607,7 +873,10 @@ void KanjiDB::search(const QString &s, KanjiSet &set) const
                     if(ok)
                         searchByIntIndex(radical, kanjisByRadical, set, previousUnite);
                     else if(key.size() == 1)
-                        searchByIntIndex(radicalsByUcs[key[0].unicode()], kanjisByRadical, set, previousUnite);
+                        if(radicals.contains(key[0].unicode()))
+                            searchByIntIndex(radicals.value(key[0].unicode())->getClassicalRadical(), kanjisByRadical, set, previousUnite);
+                        else
+                            set.clear();
                     else if(!previousUnite)
                         set.clear();
                 } else if(copy.startsWith(strokesKey))
@@ -690,7 +959,7 @@ void KanjiDB::searchByIntIndex(unsigned int index, const QMap<unsigned int, QSet
     if(index > 0 && searchedMap.contains(index))
     {
         if(unite)
-            foreach(Kanji *k, *searchedMap[index])
+            foreach(Kanji *k, *searchedMap.value(index))
                 setToFill.insert(k->getUnicode(), k);
         else
         {
@@ -698,7 +967,7 @@ void KanjiDB::searchByIntIndex(unsigned int index, const QMap<unsigned int, QSet
             while(iter.hasNext())
             {
                 iter.next();
-                if(!searchedMap[index]->contains(iter.value()))
+                if(!searchedMap.value(index)->contains(iter.value()))
                     iter.remove();
             }
         }
@@ -710,7 +979,7 @@ void KanjiDB::searchByStringIndex(const QString &indexString, const QMap<QString
 {
     if(indexString.size() > 0 && searchedMap.contains(indexString))
     {
-        Kanji *k = searchedMap[indexString];
+        Kanji *k = searchedMap.value(indexString);
         if(unite)
             setToFill.insert(k->getUnicode(), k);
         else
@@ -724,16 +993,16 @@ void KanjiDB::searchByStringIndex(const QString &indexString, const QMap<QString
         setToFill.clear();
 }
 
-const Kanji *KanjiDB::getByUnicode(unsigned int unicode) const
+const Kanji *KanjiDB::getByUnicode(Unicode unicode) const
 {
-    return kanjis[unicode];
+    return kanjis.value(unicode);
 }
 
-void KanjiDB::searchByUnicode(unsigned int unicode, KanjiSet &set, bool unite, int position) const
+void KanjiDB::searchByUnicode(Unicode unicode, KanjiSet &set, bool unite, int position) const
 {
     if(unicode > 0 && kanjis.contains(unicode))
     {
-        Kanji *k = kanjis[unicode];
+        Kanji *k = kanjis.value(unicode);
         if(unite)
             set.insert(position, k);
         else
@@ -750,7 +1019,7 @@ void KanjiDB::searchByUnicode(unsigned int unicode, KanjiSet &set, bool unite, i
 
 void KanjiDB::findVariants(const Kanji *k, KanjiSet &variants) const
 {
-    foreach(unsigned int i, k->getUnicodeVariants())
+    foreach(Unicode i, k->getUnicodeVariants())
         searchByUnicode(i, variants, true, i);
     foreach(QString s, k->getJis208Variants())
         searchByStringIndex(s, kanjisJIS208, variants, true);
@@ -758,4 +1027,39 @@ void KanjiDB::findVariants(const Kanji *k, KanjiSet &variants) const
         searchByStringIndex(s, kanjisJIS212, variants, true);
     foreach(QString s, k->getJis213Variants())
         searchByStringIndex(s, kanjisJIS213, variants, true);
+}
+
+const Kanji *KanjiDB::getRadicalVariant(Unicode u) const
+{
+    return radicals.value(u);
+}
+
+const Kanji *KanjiDB::getRadicalById(unsigned char c) const
+{
+    return radicals.value(radicalsByIndex.value(c));
+}
+
+const Kanji *KanjiDB::getComponent(Unicode u) const
+{
+    return components.value(u);
+}
+
+const Kanji *KanjiDB::getComponentById(unsigned char c) const
+{
+    return components.value(componentIndexes.value(c));
+}
+
+const KanjiSet &KanjiDB::getAllKanjis() const
+{
+    return kanjis;
+}
+
+const KanjiSet &KanjiDB::getAllRadicals() const
+{
+    return radicals;
+}
+
+const KanjiSet &KanjiDB::getAllComponents() const
+{
+    return components;
 }

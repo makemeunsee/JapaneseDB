@@ -7,13 +7,15 @@
 #include <QDataStream>
 #include "readingmeaninggroup.h"
 
+typedef unsigned int Unicode;
+
 class Kanji
 {
 public:
     Kanji();
     ~Kanji();
     const QString &getLiteral() const;
-    unsigned int getUnicode() const;
+    Unicode getUnicode() const;
     const QString &getJis208() const;
     const QString &getJis212() const;
     const QString &getJis213() const;
@@ -21,7 +23,8 @@ public:
     unsigned char getNelsonRadical() const;
     unsigned char getGrade() const;
     unsigned char getStrokeCount() const;
-    const QSet<unsigned int> & getUnicodeVariants() const;
+    const QSet<Unicode> & getUnicodeVariants() const;
+    const QSet<Unicode> & getComponents() const;
     const QSet<QString> & getJis208Variants() const;
     const QSet<QString> & getJis212Variants() const;
     const QSet<QString> & getJis213Variants() const;
@@ -36,7 +39,7 @@ public:
     friend QDataStream &operator >>(QDataStream &stream, Kanji &);
 
     void setLiteral(const QString &);
-    void setUnicode(unsigned int);
+    void setUnicode(Unicode);
     void setJis208(const QString &);
     void setJis212(const QString &);
     void setJis213(const QString &);
@@ -44,7 +47,8 @@ public:
     void setNelsonRadical(unsigned char);
     void setGrade(unsigned char);
     void setStrokeCount(unsigned char);
-    void addUnicodeVariant(unsigned int);
+    void addUnicodeVariant(Unicode);
+    void addComponent(Unicode);
     void addJis208Variant(const QString &);
     void addJis212Variant(const QString &);
     void addJis213Variant(const QString &);
@@ -57,7 +61,7 @@ public:
 
 private:
     QString literal;
-    unsigned int unicode;
+    Unicode unicode;
     QString jis208;
     QString jis212;
     QString jis213;
@@ -65,7 +69,8 @@ private:
     unsigned char nelsonRadical;
     unsigned char grade;
     unsigned char strokeCount;
-    QSet<unsigned int> unicodeVariants;
+    QSet<Unicode> unicodeVariants;
+    QSet<Unicode> components;
     QSet<QString> jis208Variants;
     QSet<QString> jis212Variants;
     QSet<QString> jis213Variants;
@@ -78,7 +83,8 @@ private:
     QSet<QString> nanoriReadings;
 };
 
-typedef QMap<unsigned int, Kanji *> KanjiSet;
-typedef QMutableMapIterator<unsigned int, Kanji *> KanjiSetIterator;
+typedef QMap<Unicode, Kanji *> KanjiSet;
+typedef QMutableMapIterator<Unicode, Kanji *> KanjiSetIterator;
+typedef QMapIterator<Unicode, Kanji *> KanjiSetConstIterator;
 
 #endif // KANJI_H
