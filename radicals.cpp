@@ -203,7 +203,7 @@ const QString Radicals::radicals[] = {
     QString::fromUtf8("麻:11"),
     QString::fromUtf8("黃:12"),
     QString::fromUtf8("黍:12"),
-    QString::fromUtf8("黑:12"),
+    QString::fromUtf8("黑黒:12"),
     QString::fromUtf8("黹:12"),
     QString::fromUtf8("黽:13"),
     QString::fromUtf8("鼎:13"),
@@ -211,7 +211,7 @@ const QString Radicals::radicals[] = {
     QString::fromUtf8("鼠:13"),
     QString::fromUtf8("鼻:14"),
     QString::fromUtf8("齊:14"),
-    QString::fromUtf8("齒:15"),
+    QString::fromUtf8("齒歯:15"),
     QString::fromUtf8("龍:16"),
     QString::fromUtf8("龜:16"),
     QString::fromUtf8("龠:17")

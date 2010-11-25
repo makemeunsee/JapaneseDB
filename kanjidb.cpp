@@ -6,14 +6,11 @@
 #include <QTextCodec>
 #include "radicals.h"
 
-#include <iostream>
-using namespace std;
-
 const QString KanjiDB::kanjiDBIndexFilename("kanjidb.index");
 const QString KanjiDB::defaultKanjiDic2Filename("kanjidic2.xml");
 const QString KanjiDB::defaultKRadFilename("kradfile");
 const QString KanjiDB::defaultKRad2Filename("kradfile2");
-const QString KanjiDB::defaultRadKXFilename("radkfilex");
+const QString KanjiDB::defaultRadKXFilename("radkfilexUTF8");
 
 const quint32 KanjiDB::magic = 0x5AD5AD15;
 const quint32 KanjiDB::version = 100;
@@ -408,7 +405,7 @@ int KanjiDB::readResources(const QDir &basedir)
 //            else
 //            {
 //                if(writeIndex(&index))
-                    b_indexSaved = true;
+//                    b_indexSaved = true;
 //                else
 //                    error = QString("Cannot write index file %1.")
 //                                      .arg(kanjiDBIndexFilename);
@@ -473,22 +470,31 @@ bool KanjiDB::readKRad(QIODevice *device)
 
 bool KanjiDB::readRadK(QIODevice *device)
 {
-    QTextCodec *codec = QTextCodec::codecForName("EUC-JP");
+    QTextCodec *codec = QTextCodec::codecForName("UTF-8");
     QTextStream ts(device);
     ts.setAutoDetectUnicode(false);
     ts.setCodec(codec);
     QString line;
     unsigned char index = 0;
+    bool ok;
     while(!(line = ts.readLine()).isNull())
     {
-        if(line.startsWith("$"))
+        if(!line.startsWith("#"))
         {
-            const QChar &c_component = line.at(2);
-            unsigned short unicode = c_component.unicode();
-            Kanji *k_component =  new Kanji;
-            k_component->setUnicode(unicode);
-            k_component->setLiteral(QString(c_component));
-            components.insert(index++, k_component);
+            if(line.startsWith("$"))
+            {
+                const QChar &c_component = line.at(2);
+                unsigned char strokes = QString(line.at(4)).toUShort(&ok);
+                unsigned short unicode = c_component.unicode();
+                Kanji *k_component =  new Kanji;
+                k_component->setUnicode(unicode);
+                k_component->setLiteral(QString(c_component));
+                k_component->setStrokeCount(strokes);
+                if(line.count(" ") == 3)
+                    k_component->setLiteral(line.mid(line.lastIndexOf(" ")+1));
+                components.insert(unicode, k_component);
+                componentIndexes.insert(index++, unicode);
+            }
         }
     }
     return true;
@@ -956,6 +962,11 @@ const Kanji *KanjiDB::getRadicalVariant(Unicode u) const
 const Kanji *KanjiDB::getRadicalById(unsigned char c) const
 {
     return radicals.value(radicalsByIndex.value(c));
+}
+
+const Kanji *KanjiDB::getComponentById(unsigned char c) const
+{
+    return components.value(componentIndexes.value(c));
 }
 
 const KanjiSet &KanjiDB::getAllKanjis() const
