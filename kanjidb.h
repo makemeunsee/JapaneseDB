@@ -33,6 +33,7 @@ public:
     const Kanji *getRadicalVariant(Unicode) const;
     const Kanji *getRadicalById(unsigned char) const;
     const Kanji *getComponentById(unsigned char) const;
+    const Kanji *getComponent(Unicode) const;
 
     friend QDataStream &operator <<(QDataStream &stream, const KanjiDB &);
     friend QDataStream &operator >>(QDataStream &stream, KanjiDB &);

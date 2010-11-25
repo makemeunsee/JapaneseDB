@@ -22,6 +22,7 @@ QDataStream &operator >>(QDataStream &stream, Kanji &k)
     k.jis213Variants.clear();
     k.radicalNames.clear();
     k.nanoriReadings.clear();
+    k.components.clear();
 
     stream >> k.literal;
     stream >> k.unicode;
@@ -29,6 +30,7 @@ QDataStream &operator >>(QDataStream &stream, Kanji &k)
     stream >> k.jis212;
     stream >> k.jis213;
     stream >> (quint8&) k.classicalRadical;
+    stream >> k.components;
     stream >> (quint8&) k.nelsonRadical;
     stream >> (quint8&) k.grade;
     stream >> (quint8&) k.strokeCount;
@@ -59,6 +61,7 @@ QDataStream &operator <<(QDataStream &stream, const Kanji &k)
     stream << k.jis212;
     stream << k.jis213;
     stream << (quint8&) k.classicalRadical;
+    stream << k.components;
     stream << (quint8&) k.nelsonRadical;
     stream << (quint8&) k.grade;
     stream << (quint8&) k.strokeCount;
@@ -255,4 +258,14 @@ const QSet<QString> & Kanji::getNanoriReadings() const
 void Kanji::addNanoriReading(const QString &nanoriReading)
 {
     nanoriReadings.insert(nanoriReading);
+}
+
+void Kanji::addComponent(Unicode u)
+{
+    components.insert(u);
+}
+
+const QSet<Unicode> &Kanji::getComponents() const
+{
+    return components;
 }

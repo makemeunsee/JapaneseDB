@@ -13,7 +13,7 @@ const QString KanjiDB::defaultKRad2Filename("kradfile2");
 const QString KanjiDB::defaultRadKXFilename("radkfilexUTF8");
 
 const quint32 KanjiDB::magic = 0x5AD5AD15;
-const quint32 KanjiDB::version = 100;
+const quint32 KanjiDB::version = 151;
 
 const QString KanjiDB::interSeps("&\\+");
 const QString KanjiDB::unionSeps(" ,;");
@@ -60,6 +60,7 @@ void KanjiDB::clear()
     kanjisJIS208.clear();
     kanjisJIS212.clear();
     kanjisJIS213.clear();
+
     foreach(QSet<Kanji *> *set, kanjisByStroke)
     {
         set->clear();
@@ -202,6 +203,37 @@ QDataStream &operator >>(QDataStream &stream, KanjiDB &db)
         }
         db.kanjisByJLPT.insert(key, set);
     }
+    stream >> size;
+    for(unsigned int i = 0; i < size; ++i)
+    {
+        unsigned int key, subsize;
+        stream >> key >> subsize;
+        QSet<Kanji *> *set = new QSet<Kanji *>;
+        for(unsigned int j = 0; j < subsize; ++j)
+        {
+            quintptr p;
+            stream >> p;
+            set->insert(memMap.value(p));
+        }
+        db.kanjisByComponent.insert(key, set);
+    }
+    stream >> size;
+    for(unsigned int i = 0; i < size; ++i)
+    {
+        Unicode ucs;
+        Kanji *k = new Kanji;
+        stream >> ucs >> *k;
+        db.components.insert(ucs, k);
+    }
+    stream >> size;
+    for(unsigned int i = 0; i < size; ++i)
+    {
+        unsigned char componentIndex;
+        Unicode ucs;
+        stream >> (quint8&) componentIndex >> ucs;
+        //build other map getting new reference from old reference
+        db.componentIndexes.insert(componentIndex, ucs);
+    }
     stream >> (quint32&) db.minStrokes;
     stream >> (quint32&) db.maxStrokes;
     return stream;
@@ -215,7 +247,7 @@ QDataStream &operator <<(QDataStream &stream, const KanjiDB &db)
     //and store their pointer value along.
     //other maps stream only the reference.
     stream << db.kanjis.size();
-    QMapIterator<Unicode, Kanji *> i(db.kanjis);
+    KanjiSetConstIterator i(db.kanjis);
     while (i.hasNext()) {
         i.next();
         stream << i.key() << *(i.value()) << (quintptr&) i.value();
@@ -269,6 +301,26 @@ QDataStream &operator <<(QDataStream &stream, const KanjiDB &db)
         stream << k.key() << k.value()->size();
         foreach(Kanji *kj, *(k.value()))
             stream << (quintptr&) kj;
+    }
+    stream << db.kanjisByComponent.size();
+    k = QMapIterator<Unicode, QSet<Kanji *> *>(db.kanjisByComponent);
+    while (k.hasNext()) {
+        k.next();
+        stream << k.key() << k.value()->size();
+        foreach(Kanji *kj, *(k.value()))
+            stream << (quintptr&) kj;
+    }
+    stream << db.components.size();
+    i = KanjiSetConstIterator(db.components);
+    while (i.hasNext()) {
+        i.next();
+        stream << i.key() << *(i.value());
+    }
+    stream << db.componentIndexes.size();
+    QMapIterator<unsigned char, Unicode> l(db.componentIndexes);
+    while (l.hasNext()) {
+        l.next();
+        stream << l.key() << l.value();
     }
     stream << db.minStrokes;
     stream << db.maxStrokes;
@@ -397,21 +449,21 @@ int KanjiDB::readResources(const QDir &basedir)
         }
 
         //only save index when all resources have been freshly read
-//        if(b_allDataRead)
-//        {
-//            if(!index.open(QIODevice::WriteOnly))
-//                error = QString("Cannot open index file %1 for writing.")
-//                                  .arg(kanjiDBIndexFilename);
-//            else
-//            {
-//                if(writeIndex(&index))
-//                    b_indexSaved = true;
-//                else
-//                    error = QString("Cannot write index file %1.")
-//                                      .arg(kanjiDBIndexFilename);
-//                index.close();
-//            }
-//        }
+        if(b_allDataRead)
+        {
+            if(!index.open(QIODevice::WriteOnly))
+                error = QString("Cannot open index file %1 for writing.")
+                                  .arg(kanjiDBIndexFilename);
+            else
+            {
+                if(writeIndex(&index))
+                    b_indexSaved = true;
+                else
+                    error = QString("Cannot write index file %1.")
+                                      .arg(kanjiDBIndexFilename);
+                index.close();
+            }
+        }
     }
 
     if(b_indexSaved)
@@ -438,10 +490,13 @@ bool KanjiDB::readIndex(QIODevice *device)
     }
 
     // Read the version
-    qint32 _version;
+    quint32 _version;
     in >> _version;
-//    if (_version < 100)
-//        return XXX_BAD_FILE_TOO_OLD;
+    if (_version < version)
+    {
+        error = QString("Unsupported index file, too old");
+        return false;
+    }
 //    if (version > 123)
 //        return XXX_BAD_FILE_TOO_NEW;
 
@@ -477,9 +532,10 @@ bool KanjiDB::readRadK(QIODevice *device)
     QString line;
     unsigned char index = 0;
     bool ok;
+    Unicode currentRadical = 0;
     while(!(line = ts.readLine()).isNull())
     {
-        if(!line.startsWith("#"))
+        if(!line.startsWith("#") && !line.size() == 0)
         {
             if(line.startsWith("$"))
             {
@@ -494,6 +550,25 @@ bool KanjiDB::readRadK(QIODevice *device)
                     k_component->setLiteral(line.mid(line.lastIndexOf(" ")+1));
                 components.insert(unicode, k_component);
                 componentIndexes.insert(index++, unicode);
+                currentRadical = unicode;
+                kanjisByComponent.insert(currentRadical, new QSet<Kanji *>);
+            } else
+            {
+                if(currentRadical == 0)
+                {
+                    error = QString("Unrecognized radk file");
+                    return false;
+                }
+                foreach(QChar c, line)
+                {
+                    Unicode u = c.unicode();
+                    if(kanjis.contains(u))
+                    {
+                        Kanji *container = kanjis.value(u);
+                        kanjisByComponent.value(currentRadical)->insert(container);
+                        container->addComponent(currentRadical);
+                    }
+                }
             }
         }
     }
@@ -962,6 +1037,11 @@ const Kanji *KanjiDB::getRadicalVariant(Unicode u) const
 const Kanji *KanjiDB::getRadicalById(unsigned char c) const
 {
     return radicals.value(radicalsByIndex.value(c));
+}
+
+const Kanji *KanjiDB::getComponent(Unicode u) const
+{
+    return components.value(u);
 }
 
 const Kanji *KanjiDB::getComponentById(unsigned char c) const
