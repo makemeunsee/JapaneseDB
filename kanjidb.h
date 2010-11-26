@@ -29,6 +29,7 @@ public:
     const KanjiSet &getAllKanjis() const;
     const KanjiSet &getAllRadicals() const;
     const KanjiSet &getAllComponents() const;
+    const QMap<Unicode, QString> &getFaultyComponents() const;
 
     const Kanji *getRadicalVariant(Unicode) const;
     const Kanji *getRadicalById(unsigned char) const;
@@ -69,7 +70,8 @@ public:
     static const QString jis212Key;
     static const QString jis213Key;
     static const QString radicalKey;
-    static const int keyCount = 10;
+    static const QString componentKey;
+    static const int keyCount = 11;
     static const QString allKeys[keyCount];
     static const QString regexp;
     static const QRegExp searchRegexp;
@@ -107,6 +109,7 @@ private:
     //radk components
     QMap<unsigned char, Unicode> componentIndexes;
     KanjiSet components;
+    QMap<Unicode, QString> faultyComponents;
 
     QMap<Unicode, QSet<Kanji *> *> kanjisByComponent;
 
