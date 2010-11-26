@@ -13,7 +13,7 @@ const QString KanjiDB::defaultKRad2Filename("kradfile2");
 const QString KanjiDB::defaultRadKXFilename("radkfilexUTF8");
 
 const quint32 KanjiDB::magic = 0x5AD5AD15;
-const quint32 KanjiDB::version = 151;
+const quint32 KanjiDB::version = 153;
 
 const QString KanjiDB::interSeps("&\\+");
 const QString KanjiDB::unionSeps(" ,;");
@@ -29,7 +29,8 @@ const QString KanjiDB::jis208Key("jis208=");
 const QString KanjiDB::jis212Key("jis212=");
 const QString KanjiDB::jis213Key("jis213=");
 const QString KanjiDB::radicalKey("radical=");
-const QString KanjiDB::allKeys[keyCount] = {gradeKey, jlptKey, jis208Key, jis212Key, jis213Key, radicalKey, strokesKey, strokesLessKey, strokesMoreKey, ucsKey};
+const QString KanjiDB::componentKey("component=");
+const QString KanjiDB::allKeys[keyCount] = {gradeKey, jlptKey, jis208Key, jis212Key, jis213Key, componentKey, radicalKey, strokesKey, strokesLessKey, strokesMoreKey, ucsKey};
 const QString KanjiDB::regexp(fromArray(allKeys, keyCount).join("|"));
 const QRegExp KanjiDB::searchRegexp("(("+regexp+")"+notSeps+"+)("+seps+"("+regexp+")"+notSeps+"+)*");
 
@@ -231,8 +232,15 @@ QDataStream &operator >>(QDataStream &stream, KanjiDB &db)
         unsigned char componentIndex;
         Unicode ucs;
         stream >> (quint8&) componentIndex >> ucs;
-        //build other map getting new reference from old reference
         db.componentIndexes.insert(componentIndex, ucs);
+    }
+    stream >> size;
+    for(unsigned int i = 0; i < size; ++i)
+    {
+        Unicode ucs;
+        QString faultyName;
+        stream >> ucs >> faultyName;
+        db.faultyComponents.insert(ucs, faultyName);
     }
     stream >> (quint32&) db.minStrokes;
     stream >> (quint32&) db.maxStrokes;
@@ -321,6 +329,12 @@ QDataStream &operator <<(QDataStream &stream, const KanjiDB &db)
     while (l.hasNext()) {
         l.next();
         stream << l.key() << l.value();
+    }
+    stream << db.faultyComponents.size();
+    QMapIterator<Unicode, QString> m(db.faultyComponents);
+    while (m.hasNext()) {
+        m.next();
+        stream << m.key() << m.value();
     }
     stream << db.minStrokes;
     stream << db.maxStrokes;
@@ -540,14 +554,14 @@ bool KanjiDB::readRadK(QIODevice *device)
             if(line.startsWith("$"))
             {
                 const QChar &c_component = line.at(2);
-                unsigned char strokes = QString(line.at(4)).toUShort(&ok);
+                unsigned char strokes = line.split(" ").at(2).toUShort(&ok);
                 unsigned short unicode = c_component.unicode();
                 Kanji *k_component =  new Kanji;
                 k_component->setUnicode(unicode);
                 k_component->setLiteral(QString(c_component));
                 k_component->setStrokeCount(strokes);
                 if(line.count(" ") == 3)
-                    k_component->setLiteral(line.mid(line.lastIndexOf(" ")+1));
+                    faultyComponents.insert(unicode, line.mid(line.lastIndexOf(" ")+1));
                 components.insert(unicode, k_component);
                 componentIndexes.insert(index++, unicode);
                 currentRadical = unicode;
@@ -879,6 +893,13 @@ void KanjiDB::search(const QString &s, KanjiSet &set) const
                             set.clear();
                     else if(!previousUnite)
                         set.clear();
+                } else if(copy.startsWith(componentKey))
+                {
+                    QString key = parseKey(copy, componentKey, unite);
+                    if(key.size() == 1)
+                        searchByIntIndex(key.at(0).unicode(), kanjisByComponent, set, previousUnite);
+                    else if(!previousUnite)
+                        set.clear();
                 } else if(copy.startsWith(strokesKey))
                 {
                     bool ok;
@@ -1062,4 +1083,9 @@ const KanjiSet &KanjiDB::getAllRadicals() const
 const KanjiSet &KanjiDB::getAllComponents() const
 {
     return components;
+}
+
+const QMap<Unicode, QString> &KanjiDB::getFaultyComponents() const
+{
+    return faultyComponents;
 }
