@@ -6,6 +6,8 @@
 #include <QTextCodec>
 #include "radicals.h"
 
+#include <iostream>
+
 const QString KanjiDB::kanjiDBIndexFilename("kanjidb.index");
 const QString KanjiDB::defaultKanjiDic2Filename("kanjidic2.xml");
 const QString KanjiDB::defaultKRadFilename("kradfile");
@@ -429,37 +431,37 @@ int KanjiDB::readResources(const QDir &basedir)
                 radKXFile.close();
             }
 
-            QFile kRadFile(basedir.absolutePath().append("/").append(defaultKRadFilename));
-            if (!kRadFile.open(QIODevice::Text | QIODevice::ReadOnly)) {
-                error = QString("Cannot open KRADFILE file %1.")
-                                  .arg(defaultKRadFilename);
-                b_allDataRead = false;
-            } else {
-                if (!readKRad(&kRadFile))
-                {
-                    error = QString("Cannot read KRADFILE file %1:\n%2.")
-                                      .arg(defaultKRadFilename)
-                                      .arg(error);
-                    b_allDataRead = false;
-                }
-                kRadFile.close();
-            }
+//            QFile kRadFile(basedir.absolutePath().append("/").append(defaultKRadFilename));
+//            if (!kRadFile.open(QIODevice::Text | QIODevice::ReadOnly)) {
+//                error = QString("Cannot open KRADFILE file %1.")
+//                                  .arg(defaultKRadFilename);
+//                b_allDataRead = false;
+//            } else {
+//                if (!readKRad(&kRadFile))
+//                {
+//                    error = QString("Cannot read KRADFILE file %1:\n%2.")
+//                                      .arg(defaultKRadFilename)
+//                                      .arg(error);
+//                    b_allDataRead = false;
+//                }
+//                kRadFile.close();
+//            }
 
-            QFile kRad2File(basedir.absolutePath().append("/").append(defaultKRad2Filename));
-            if (!kRad2File.open(QIODevice::Text | QIODevice::ReadOnly)) {
-                error = QString("Cannot open KRAD2FILE file %1.")
-                                  .arg(defaultKRad2Filename);
-                b_allDataRead = false;
-            } else {
-                if (!readKRad(&kRad2File))
-                {
-                    error = QString("Cannot read KRAD2FILE file %1:\n%2.")
-                                      .arg(defaultKRad2Filename)
-                                      .arg(error);
-                    b_allDataRead = false;
-                }
-                kRad2File.close();
-            }
+//            QFile kRad2File(basedir.absolutePath().append("/").append(defaultKRad2Filename));
+//            if (!kRad2File.open(QIODevice::Text | QIODevice::ReadOnly)) {
+//                error = QString("Cannot open KRAD2FILE file %1.")
+//                                  .arg(defaultKRad2Filename);
+//                b_allDataRead = false;
+//            } else {
+//                if (!readKRad(&kRad2File))
+//                {
+//                    error = QString("Cannot read KRAD2FILE file %1:\n%2.")
+//                                      .arg(defaultKRad2Filename)
+//                                      .arg(error);
+//                    b_allDataRead = false;
+//                }
+//                kRad2File.close();
+//            }
         }
 
         //only save index when all resources have been freshly read
@@ -526,7 +528,7 @@ bool KanjiDB::readIndex(QIODevice *device)
     return true;
 }
 
-bool KanjiDB::readKRad(QIODevice *device)
+bool KanjiDB::readKRad(QIODevice *)
 {
     //TODO
     if(false)
